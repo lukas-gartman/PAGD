@@ -6,20 +6,27 @@ import sys
 import os.path
 import os
 import scipy.optimize
-import numpy as np
 
-    #Maximum distance a gunshot can be picked up from
 MAX_DISTANCE = 1000 
-    #Speed of sound in meters per second
+"""Maximum distance a gunshot can be picked up from"""
 SPEED_OF_SOUND = 343
-    #Speed of sound in meters per millisecond
+"""Speed of sound in meters per second"""
 SPEED_OF_SOUND_MS = 343/1000
-    #Maximum difference of time in milliseconds between when two different clients pick up a gunshot
+"""Speed of sound in meters per millisecond"""
 MAX_TIME_DIFF = MAX_DISTANCE/SPEED_OF_SOUND_MS
+"""Maximum difference of time in milliseconds between when two different clients pick up a gunshot"""
 
 
 class Position:
     def __init__(self, latitude, longitude, altitude):
+        """
+        @param latitude: latitude in degrees between -90 and 90
+        @type latitude: float
+        @param longitude: longitude in degrees between -180 and 180
+        @type longitude: float
+        @param altitude: altitude in meters above sea level
+        @type altitude: float
+        """
         self.v = (latitude, longitude, altitude)
 
     def __str__(self):
@@ -41,16 +48,30 @@ class Position:
     def altitude(self):
         return self.v[2]
 
-    def distance(self, pos : Position):
+    def distance(self, position : Position) -> float:
+        """
+        Returns the distance in meters from calling position object to
+        given position object
+
+        @param position: Position from which to calculate distance to
+        @return: Distance in meters to specified position
+        """
+
         #Calculate distance in meters from just latitude and longitude
-        geodesic = geopy.distance.geodesic(self.spherical, pos.spherical).m
+        geodesic = geopy.distance.geodesic(self.spherical, position.spherical).m
         # Take altitude into account using pythagorean theorem
         # This will not be accurate for very large distances due
         # to earth's curvature but will work for these purposes
         # with (relatively) short distances
-        return math.sqrt(geodesic**2 + (self.altitude - pos.altitude)**2)
+        return math.sqrt(geodesic**2 + (self.altitude - position.altitude)**2)
 
-    def midpoint(positions : list[Position]):
+    def midpoint(positions : list[Position]) -> Position:
+        """
+        Returns the midpoint of a list of positions
+
+        @param position: List of positions to find midpoint of
+        @return: Position in center of all given positions
+        """
         n = len(positions)
         # Again, this will be accurate for these
         # (relatively) short distances
@@ -58,7 +79,25 @@ class Position:
                         sum(p.longitude for p in positions) / n, 
                         sum(p.altitude for p in positions) / n)
 
-    def tdoa(positions : list[Position], timestamps : list[int]):
+    def tdoa(positions : list[Position], timestamps : list[int]) -> tuple[Position, int]:
+        """
+        Given a list of positions of sound recievers and when these
+        recievers picked up a sound, it uses TDOA
+        (Time Difference of Arrival) to estimate the positions of
+        the sound source and when it sent out the sound signal. 
+        Given that the positions and timestamps of the receivers
+        are subject to noise, the problem is set up as an optimization
+        problem, where we try to find the sound source position and
+        timestamp that reduces the error for each sound receiver. 
+        Error is defined for a sound receiver as the difference
+        between the distance to sound sound and distance traveled
+        by sound.
+
+        @param positions: List of positions of sound recievers
+        @param timestamps: List of timestamps in milliseconds when
+        the sound recievers 'heard' the sound
+        @return: Estimated position and timestamp of sound source
+        """
         n = len(positions)
         # The objective functions to minimize using Nelder-Mead algorithm
         # It is a summation of errors squared e_0^2 + e_1^2 + ... + e_n^2
@@ -80,6 +119,13 @@ class Position:
 
 class GunshotReport:
     def __init__(self, position : Position, timestamp: int, weapontype: str, clientid: int):
+        """
+        @param position: Position of the client that heard the gunshot
+        @param timestamp: Timestamps in milliseconds when gunshot was
+        detected by client
+        @param weapontype: Type of weapon used as estimated by the client
+        @param clientid: Unique client id to differentiate clients
+        """
         self.position = position
         self.timestamp = timestamp
         self.weapontype = weapontype
@@ -87,22 +133,49 @@ class GunshotReport:
 
     @classmethod
     def from_coordinates(cls, coordinates : tuple[float, float, float], timestamp: int, weapontype: str, clientid: int):
+        """
+        @param coordinates: Tuple of latitude, longitude, and altitude.
+        Latitude and longitude is given in degress, altitude in meters
+        @param timestamp: Timestamps in milliseconds when gunshot was
+        detected by client
+        @param weapontype: Type of weapon used as estimated by the client
+        @param clientid: Unique client id to differentiate clients
+        """
         return cls(Position(*coordinates), timestamp, weapontype, clientid)
 
     def description(self):
+        """
+        Returns a string describing the gunshot report
+        """
         return ("Gunshot of type: " + self.weapontype + " detected at time: " + str(self.timestamp) + 
             " by client " + str(self.clientid) + " at position: " + str(self.position.latitude) + ", " + 
             str(self.position.longitude) + " at altitude: " + str(self.position.altitude))
 
 class GunshotEvent:
     def __init__(self, gunshot: GunshotReport):
+        """
+        @param gunshot: The first gunshot report of a new event,
+        used to group together with other gunshot reports that are
+        believed to be related to the same shooting
+        """
         self.gunshots = [gunshot]
         self.clients = {gunshot.clientid}
         self.weapontype = gunshot.weapontype
         self.timestamp_firstshot = gunshot.timestamp
         self.timestamp_latestshot = gunshot.timestamp
 
-    def try_sameclient(self, gunshot: GunshotReport):
+    def try_sameclient(self, gunshot: GunshotReport) -> bool:
+        """
+        Check if the client that reported given gunshot report,
+        has previously reported gunshots in this event, and
+        the gunshot report seems to be related to this event.
+        If so, it adds it to this event and returns True, 
+        otherwise it returns False.
+
+        @param gunshot: The gunshot report to check if it belongs
+        @return: True if gunshot report was added to event,
+        otherwise False.
+        """
         if (gunshot.clientid in self.clients and
                 gunshot.weapontype == self.weapontype and
                 self.inside_range(gunshot)):
@@ -112,7 +185,18 @@ class GunshotEvent:
             return True
         return False
 
-    def try_newclient(self, gunshot: GunshotReport):
+    def try_newclient(self, gunshot: GunshotReport) -> bool:
+        """
+        Check if the client that reported given gunshot report,
+        has no previously reported gunshots in this event, and
+        the gunshot report seems to be related to this event.
+        If so, it adds it to this event and returns True, 
+        otherwise it returns False.
+
+        @param gunshot: The gunshot report to check if it belongs
+        @return: True if gunshot report was added to event,
+        otherwise False.
+        """
         if (gunshot.weapontype == self.weapontype and
                 self.inside_range(gunshot)):
             self.gunshots.append(gunshot)
@@ -123,12 +207,28 @@ class GunshotEvent:
         return False
 
     def inside_range(self, gunshot: GunshotReport):
+        """
+        Return true if the position of the client reporting a gunshot,
+        is close to all other positions of gunshot reports in this
+        event. Otherwise returns false.
+
+        @param gunshot: The gunshot report to check
+        @return: True if gunshot report was in event range, otherwise
+        False
+        """
         for gs in self.gunshots:
             if gunshot.position.distance(gs.position) > MAX_DISTANCE*2:
                 return False
         return True
 
-    def get_first_reports(self):
+    def get_first_reports(self) -> iter[Position]:
+        """
+        Return only the gunshot reports corresponding to the first
+        gunshot fired in this gunfire event and not the following
+        gunshots fired by the same subject.
+
+        @return: Gunshot reports of the first gunshot in this event
+        """
         clients = set()
         sorted_gunshots = sorted(self.gunshots, key=lambda gunshot: gunshot.timestamp)
         for gunshot in sorted_gunshots:
@@ -136,7 +236,15 @@ class GunshotEvent:
                 yield gunshot
                 clients.add(gunshot.clientid)
 
-    def approximations(self):
+    def approximations(self) -> tuple[Position, int]:
+        """
+        Tries to estimate the position where the gun was fired and
+        what time instance the first shot was fired using TDOA.
+        If unable to make an estimation, returns (None,None)
+
+        @return: Tuple of position, timestamp if estimate was
+        possible, otherwise None,None
+        """
         first_reports = list(self.get_first_reports()) #Only the report of the first gunshot heard, not following gunshots
         if len(first_reports) < 3:
             return None, None
