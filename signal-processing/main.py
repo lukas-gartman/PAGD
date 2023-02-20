@@ -1,5 +1,4 @@
 import os
-from scipy.io.wavfile import read
 import numpy as np
 from matplotlib import pyplot as plt
 import tensorflow as tf
