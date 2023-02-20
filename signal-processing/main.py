@@ -144,7 +144,7 @@ def collectPaths():
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    # -- Uncomment to see the visual representation of each processing step
+    # -- Set to true to see the visual representation of each processing step
     DEMO = False
     if DEMO:
         demo()
