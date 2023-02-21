@@ -8,7 +8,7 @@ import os
 import scipy.optimize
 
 MAX_DISTANCE = 1000 
-"""Maximum distance a gunshot can be picked up from"""
+"""Maximum distance in meters a gunshot can be picked up from"""
 SPEED_OF_SOUND = 343
 """Speed of sound in meters per second"""
 SPEED_OF_SOUND_MS = 343/1000
@@ -161,8 +161,8 @@ class GunshotEvent:
         self.gunshots = [gunshot]
         self.clients = {gunshot.clientid}
         self.weapontype = gunshot.weapontype
-        self.timestamp_firstshot = gunshot.timestamp
-        self.timestamp_latestshot = gunshot.timestamp
+        self.timestamp_first_report = gunshot.timestamp
+        self.timestamp_latest_report = gunshot.timestamp
 
     def try_sameclient(self, gunshot: GunshotReport) -> bool:
         """
@@ -178,10 +178,10 @@ class GunshotEvent:
         """
         if (gunshot.clientid in self.clients and
                 gunshot.weapontype == self.weapontype and
-                self.inside_range(gunshot)):
+                self._inside_range(gunshot)):
             self.gunshots.append(gunshot)
-            self.timestamp_latestshot = max(self.timestamp_latestshot, gunshot.timestamp)
-            self.timestamp_firstshot = min(self.timestamp_firstshot, gunshot.timestamp)
+            self.timestamp_latest_report = max(self.timestamp_latest_report, gunshot.timestamp)
+            self.timestamp_first_report = min(self.timestamp_first_report, gunshot.timestamp)
             return True
         return False
 
@@ -198,15 +198,15 @@ class GunshotEvent:
         otherwise False.
         """
         if (gunshot.weapontype == self.weapontype and
-                self.inside_range(gunshot)):
+                self._inside_range(gunshot)):
             self.gunshots.append(gunshot)
             self.clients.add(gunshot.clientid)
-            self.timestamp_latestshot = max(self.timestamp_latestshot, gunshot.timestamp)
-            self.timestamp_firstshot = min(self.timestamp_firstshot, gunshot.timestamp)
+            self.timestamp_latest_report = max(self.timestamp_latest_report, gunshot.timestamp)
+            self.timestamp_first_report = min(self.timestamp_first_report, gunshot.timestamp)
             return True
         return False
 
-    def inside_range(self, gunshot: GunshotReport):
+    def _inside_range(self, gunshot: GunshotReport):
         """
         Return true if the position of the client reporting a gunshot,
         is close to all other positions of gunshot reports in this
@@ -221,13 +221,14 @@ class GunshotEvent:
                 return False
         return True
 
-    def get_first_reports(self) -> iter[Position]:
+    def _get_first_reports(self) -> iter[Position]:
         """
-        Return only the gunshot reports corresponding to the first
-        gunshot fired in this gunfire event and not the following
-        gunshots fired by the same subject.
+        Return an iterable of only the gunshot reports corresponding
+        to the first gunshot fired in this gunfire event and not the
+        following gunshots fired by the same subject.
 
-        @return: Gunshot reports of the first gunshot in this event
+        @return: Iterable of gunshot reports of the first gunshot
+        in this event
         """
         clients = set()
         sorted_gunshots = sorted(self.gunshots, key=lambda gunshot: gunshot.timestamp)
@@ -245,7 +246,7 @@ class GunshotEvent:
         @return: Tuple of position, timestamp if estimate was
         possible, otherwise None,None
         """
-        first_reports = list(self.get_first_reports()) #Only the report of the first gunshot heard, not following gunshots
+        first_reports = list(self._get_first_reports()) #Only the report of the first gunshot heard, not following gunshots
         if len(first_reports) < 3:
             return None, None
         self.position, self.timestamp = Position.tdoa([r.position for r in first_reports], [r.timestamp for r in first_reports])
@@ -261,7 +262,7 @@ def popevent(event):
             if gunshot.clientid == client:
                 gunshotsheard += 1
         gunshotcount = max(gunshotcount, gunshotsheard)
-    print("\t" + str(gunshotcount) + " " + event.weapontype + " gunshot(s) heard by " + str(len(event.clients)) + " clients at time: " + str(event.timestamp_firstshot))
+    print("\t" + str(gunshotcount) + " " + event.weapontype + " gunshot(s) heard by " + str(len(event.clients)) + " clients at time: " + str(event.timestamp_first_report))
     if len(event.clients) < 3:
         print("\tPosition not able to be pinpointed due to too few reports")
     else:
@@ -273,8 +274,8 @@ def testfile(gunshotstrings):
     for line in gunshotstrings:
         latitude, longitude, altitude, timestamp, weapontype, clientid = line.split(" ")[:6]
         gunshot = GunshotReport.from_coordinates((float(latitude), float(longitude), float(altitude)), int(timestamp), weapontype, int(clientid))
-        [popevent(event) for event in events if gunshot.timestamp - event.timestamp_latestshot > MAX_TIME_DIFF]
-        events = [event for event in events if gunshot.timestamp - event.timestamp_latestshot <= MAX_TIME_DIFF]
+        [popevent(event) for event in events if gunshot.timestamp - event.timestamp_latest_report > MAX_TIME_DIFF]
+        events = [event for event in events if gunshot.timestamp - event.timestamp_latest_report <= MAX_TIME_DIFF]
         for event in events:
             if event.try_sameclient(gunshot) == True:
                 break
