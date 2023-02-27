@@ -7,7 +7,7 @@ CREATE TABLE Guns(
 );
 
 CREATE TABLE Reports(
-    report_id NUMERIC PRIMARY KEY,
+    report_id INT PRIMARY KEY AUTO_INCREMENT,
     timestamp DATETIME(3) DEFAULT NOW(3) NOT NULL,
     coord VARCHAR(255) NOT NULL,
     gun VARCHAR(255) NOT NULL,
