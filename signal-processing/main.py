@@ -1,18 +1,17 @@
 import os
 import numpy as np
 from scipy.io.wavfile import read
-import tensorflow
 from matplotlib import pyplot as plt
 import tensorflow as tf
 import json
 
-# import tensorflow_io as tfio
-
 POS = './data/Gunshot_Sounds'
 DEMO_FILE = '/Samsung_Edge_S7/BoltAction22_Samsung/SA_004B_S02.wav'
 PARENT_DIR = './data/Gunshot_Sounds/Samsung_Edge_S7/Glock45_Samsung'
-#pos = tf.data.Dataset.list_files("./data/Gunshot_Sounds/Samsung_Edge_S7/Glock45_Samsung" + '\*.wav')
-#data = tf.data.Dataset.zip((pos, tf.data.Dataset.from_tensor_slices(tf.ones(len(pos)))))
+
+
+# pos = tf.data.Dataset.list_files("./data/Gunshot_Sounds/Samsung_Edge_S7/Glock45_Samsung" + '\*.wav')
+# data = tf.data.Dataset.zip((pos, tf.data.Dataset.from_tensor_slices(tf.ones(len(pos)))))
 
 
 # Visualize the wave
@@ -69,47 +68,22 @@ def load_wav_16k_mono(fileName):
 
 # Load an audio file into 8khz format
 def load_wav_8k_mono(fileName):
-    contents = tf.io.read_file(fileName)  # Read file
-    wav, sampleRate = tf.audio.decode_wav(contents, desired_channels=1)  # Decode audio
-    wav = tf.squeeze(wav, axis=-1)  # Unpack unnecessary arrays
-    wav_8k = []
-    # Down-sample to 16khz if required
-    if sampleRate == 48000:
-        for el in wav[::6]:
-            wav_8k.append(el)
-        np.array(wav_8k)
-    elif sampleRate == 16000:
-        for el in wav[::3]:
-            wav_8k.append(el)
-        np.array(wav_8k)
-    elif sampleRate == 8000:
-        wav_8k = wav
-    else:
-        raise Exception("Sample rate not meeting the expected possible sample rates: ", sampleRate)
-    return wav_8k
-
-
-# Load an audio file into 8khz format
-def load_wav_8k_mono_noTensor(fileName):
     contents = read(fileName)  # Read file
-
     sampleRate, wav = contents  # Decode audio
     wav_8k = []
-    # Down-sample to 16khz if required
+    # Select downsampling factor
     if sampleRate == 48000:
-        for el in wav[::6]:
-            wav_8k.append(el[0])
-        np.array(wav_8k)
+        downsampleFac = 6
     elif sampleRate == 16000:
-        for el in wav[::3]:
-            wav_8k.append(el[0])
-        np.array(wav_8k)
+        downsampleFac = 3
     elif sampleRate == 8000:
-        for el in wav[::1]:
-            wav_8k.append(el[0])
-        np.array(wav_8k)
+        downsampleFac = 1
     else:
         raise Exception("Sample rate not meeting the expected possible sample rates: ", sampleRate)
+    # Downsample to 8khz
+    for el in wav[::downsampleFac]:
+        wav_8k.append(el[0])
+    np.array(wav_8k)
     return wav_8k
 
 
@@ -137,12 +111,13 @@ def shortenWave(wave):
     return newWave
 
 
-# Collect all file paths for Samsung edgy s7 with gun type
+# Collect all file paths for a folder containing folders that in turn contain .wav files
 def collectPaths(path):
     folders = os.listdir(path)
     paths = []
     for i in range(len(folders)):
-        if folders[i] == "__MACOSX": continue  # Skip macosx data, cant read it on windows
+        if folders[i] == "__MACOSX":
+            continue  # Skip macosx data, cant read it on windows
         filePaths = os.listdir(path + "/" + folders[i])
         for filePath in filePaths:
             paths.append((path + "/" + folders[i] + '/' + filePath, folders[i], filePath))
@@ -152,11 +127,10 @@ def collectPaths(path):
 # Get a wave with 16khz or 8khz sample rate from a .wav file
 def getWave(fileName, sampleRate):
     # Load audio as waveform
-    wave = []
     if sampleRate == 16000:
         wave = load_wav_16k_mono(fileName)
     elif sampleRate == 8000:
-        wave = load_wav_8k_mono_noTensor(fileName)
+        wave = load_wav_8k_mono(fileName)
     else:
         raise Exception("Bad sample rate, only 8khz and 16khz is supported")
     return wave
@@ -185,7 +159,8 @@ def preProcessWave(wave, sampleRate):
         wave = tf.concat([zero_padding, wave], 0)
     return wave
 
-# Write a tensor spectrogram to a json file
+
+# Write a tensor list of spectrograms to a json file
 def tensorWriteJSON(data, path):
     with open(path, 'w') as f:
         # Convert the tensor array to a numpy list so that it can be written as JSON
@@ -195,52 +170,56 @@ def tensorWriteJSON(data, path):
         f.close()
 
 
-# Read a json file as a tensor
+# Read a json file as a tensor list of spectrograms
 def tensorReadJSON(path):
     f = open(path, 'r')
-    data = json.load(f) # Parse data
+    data = json.load(f)  # Parse data
     f.close()
-    data = tf.convert_to_tensor(data) # Convert datatype to tensorflow
+    # Convert datatype to tensorflow
+    data = tf.convert_to_tensor(data)
+    data = tf.data.Dataset.from_tensor_slices(data)
     return data
 
 
-# Import the training data in a folder as a list
-def importTrainingDataFolder(folderPath):
-    filePaths = os.listdir(folderPath)
-    length = len(filePaths)
-    files = []
-    for i in range(length):
-        files.append(tensorReadJSON(folderPath + '/' + filePaths[i]))
-        print(str(int((i + 1)/length * 100)) + "%")
-    return files
+# Remove device-type from file names Ex: "Gun_Samsung.json" -> "Gun"
+def getWeaponType(fileName):
+    weaponType = ""
+    for char in fileName:
+        if char == '_':
+            break
+        weaponType += char
+    return weaponType
 
 
 # Process all .wav files into spectrograms from a folder
-def processFolder(sampleRate: int, path: str, debug: bool, overWrite: bool):
+def processFolder(sampleRate: int, path: str, negative: bool, debug: bool, overWrite: bool):
     filePaths = collectPaths(path)
-    destinationFolder = './trainingData' + str(int(sampleRate / 1000)) + 'khz'
-    previousLabel = filePaths[0][1]  # Set first label
+    labelType = "Pos"
+    if negative:
+        labelType = "Neg"
+    destinationFolder = './trainingData' + labelType + str(int(sampleRate / 1000)) + 'khz'
+    previousFileName = filePaths[0][1]  # Set first fileName
     length = len(filePaths)
     output = []
     for i in range(length):
         path = filePaths[i][0]  # Complete path to file
-        label = filePaths[i][1]  # Name of the weapon in the folder
+        fileName = filePaths[i][1]  # Name of the weapon in the folder
         # fileName = paths[i][2] # Not used currently
-        filePath = destinationFolder + '/' + previousLabel + '.json'  # File written to
+        filePath = destinationFolder + '/' + previousFileName + '.json'  # File written to
 
         # Status update
-        if label != previousLabel:
+        if fileName != previousFileName:
             print(str(int(i / length * 100)) + "%")
 
         # Overwrite protection
         if os.path.isfile(filePath) and not overWrite:
-            previousLabel = label
+            previousFileName = fileName
             continue
         # Save file and continue
-        if label != previousLabel:
+        if fileName != previousFileName:
             tensorWriteJSON(output, filePath)
             output = []
-            previousLabel = label
+            previousFileName = fileName
 
         wave = getWave(path, sampleRate)  # Load file and get wave
         wave = preProcessWave(wave, sampleRate)  # Correct the dimensions of the wave
@@ -252,20 +231,75 @@ def processFolder(sampleRate: int, path: str, debug: bool, overWrite: bool):
             plotSpectrogramSimple(spectrogram)
             print(path)
             print("Wavelength:", len(wave))
-            print("Current folder processed:", label, "\nSpectrogram shape:", spectrogram.shape, "\nIndex processed:",
+            print("Current folder processed:", fileName, "\nSpectrogram shape:", spectrogram.shape,
+                  "\nIndex processed:",
                   i)
         else:  # Save the processed data in a folder
             output.append(spectrogram)
 
 
+# Function to help with concatenation of nonexistent datasets
+def safeTensorConcatenate(dataset1, dataset2):
+    if dataset1 is None:
+        return dataset2
+    if dataset2 is None:
+        return dataset1
+    return dataset1.concatenate(dataset2)
+
+
+# Grabs files from folders in batches and trains a model with it
+def trainModel(positivePath="", negativePath="", modelPath=""):
+    posFilesPath = os.listdir(positivePath)
+    negFilesPath = os.listdir(negativePath)
+    batchSize = 1  # higher values increases randomness of weapon types as well as pos and negative data
+    posIndex = 0  # File index in positive training data folder
+    negIndex = 0  # File index in negative training data folder
+
+    # Train model in batches
+    while posIndex < len(posFilesPath) or negIndex < len(negFilesPath):
+        posData = None
+        negData = None
+        for i in range(batchSize):
+            # Collect positive data
+            if posIndex < len(posFilesPath):
+                file = tensorReadJSON(positivePath + '/' + posFilesPath[posIndex])
+                file = tf.data.Dataset.zip((file, tf.data.Dataset.from_tensor_slices(tf.ones(len(file)))))
+                if i == 0:  # Initialize as tensorflow dataset
+                    posData = file
+                else:
+                    posData.concatenate(file)
+                posIndex += 1
+            # Collect positive data
+            if negIndex < len(negFilesPath):
+                file = tensorReadJSON(negativePath + '/' + negFilesPath[negIndex])
+                file = tf.data.Dataset.zip((file, tf.data.Dataset.from_tensor_slices(tf.zeros(len(file)))))
+                if i == 0:  # Initialize as tensorflow dataset
+                    negData = file
+                else:
+                    negData.concatenate(file)
+                negIndex += 1
+        data = safeTensorConcatenate(posData, negData)
+        data = data.cache()
+        # Adjust these values to your liking (Use len(data))
+        data = data.shuffle(buffer_size=5000)
+        data = data.batch(16)
+        data = data.prefetch(8)
+        train = data.take(36)
+        # Just to show that it works, it picks out a random sample and shows it
+        # Delete this when you've seen it once and can confirm that it works
+        samples, labels = train.as_numpy_iterator().next()
+        plt.figure(figsize=(30, 20))
+        plt.imshow(tf.transpose(samples[0])[0])
+        plt.show()
+        print(samples, samples.shape)
+        print(labels, labels.shape)
+        # Train model here
+        # import(modelpath) :P
+
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-
-    # Turn an entire folder into spectrograms (very slow)
-    #processFolder(8000, "./data/Gunshot_Sounds/Samsung_Edge_S7", False, False)
-
-    # It's difficult to import a large folder, we'll have to think of something less clunky
-    data = importTrainingDataFolder('./trainingData8khz') # A list of folders (lists) of files (spectrograms)
-    plotSpectrogramSimple(data[0][0]) # BoltAction22
-
+    # Turn an entire folder into json files of spectrograms
+    # processFolder(8000, "./data/Gunshot_Sounds/Samsung_Edge_S7", False, False, False)
+    # Train a model ( Actual training methods are yet to be implemented )
+    trainModel("./trainingDataPos8khz", "./trainingDataNeg8khz", "")
