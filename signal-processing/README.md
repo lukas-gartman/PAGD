@@ -6,15 +6,21 @@ pip install numpy matplotlib json skipy tensorflow
 ## How to use
 ### Plotting
 PlotWave() - Display a wave using getWave()
+
 plotSpectrogram() - Display a spectrogram with correctly labeled axis by supplying a spectrogram, wave and its sampleRate
+
 plotSpectrogramSimple() - Display a spectrogram by supplying a spectrogram
 ### Helper functions
 load_wav_16k_mono() - Accepts 48khz and 16khz .wav files and loads them as a wave with 16k sampleRate
+
 load_wav_8k_mono() - Accepts 48khz, 16khz, 8khz .wav files and loads them as a wave with 16k sampleRate
+
 shortenWave() - Used for optimization, it truncates a supplied wave to only contain the gunshot in a 500ms window (TO DO)
+
 collectPaths() - Get all filepaths of a folder containing sub-folders with audio samples
-### 
+### Core functionality
 processFolder() - Generate trainingdata and output them to a predefined folder
+
 trainModel() - Use a folder with positive and a folder with negative training data to train a trainModel
 
 ### Training a model 
