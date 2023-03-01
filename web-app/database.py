@@ -13,13 +13,13 @@ class Database:
         self._connect()
 
     def __del__(self):
-        self.close()
+        self._close()
 
     def __enter__(self):
         return self
 
     def __exit__(self):
-        self.close()
+        self._close()
 
     def _connect(self):
         self.conn = mariadb.connect(
@@ -29,13 +29,19 @@ class Database:
             password = self.password,
             database = self.database)
         self.cursor = self.conn.cursor()
+    
+    def _close(self):
+        if self.cursor is not None:
+            self.cursor.close()
+        if self.conn is not None:
+            self.conn.close()
 
-    """Execute an SQL query
-    @param query string: the SQL query to be executed. Use %s for parameters
-    @param values tuple: the parameter values for each %s in the query
-    @return 
-    """
     def execute(self, query, values = None):
+        """Execute an SQL query
+        @param query string: the SQL query to be executed. Use %s for parameters
+        @param values tuple: the parameter values for each %s in the query
+        @return 
+        """
         if self.cursor is None:
             self._connect()
 
@@ -44,23 +50,24 @@ class Database:
         self.conn.commit()
 
         return result
-
-    def close(self):
-        if self.cursor is not None:
-            self.cursor.close()
-        if self.conn is not None:
-            self.conn.close()
     
     def to_json(self, rows, default = None):
+        """Convert database results to a JSON object
+        @param rows (list): a list of tuples containing the query result
+        @param default (type): the type to cast to by default if unable to determine data type
+        @return (json): a JSON object with the query result
+        """
         # convert the list of tuples to a list of dictionaries
         row_dicts = []
         for row in rows:
             row_dict = {}
             for i in range(len(row)):
+                # get the name of the column and set its value in the dictionary
                 row_dict[self.cursor.description[i][0]] = row[i]
             row_dicts.append(row_dict)
         json_obj = json.dumps(row_dicts, default=default)
 
+        # remove the wrapping array for single results
         if len(row_dicts) == 1:
             json_obj = json_obj[1:-1]
         
