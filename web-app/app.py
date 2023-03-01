@@ -19,31 +19,40 @@ def hello_world():
         "message": "Hello, World!"
     }
 
-@app.route("/api/guns/all")
-def get_all_guns():
-    all_guns = db.get_all_guns()
-    json_output = json.dumps(all_guns)
-    return json_output
-
 @app.route("/api/guns", methods = ["POST"])
 def add_gun():
+    """Add a gun to the database
+    @param gun_name (string): the name of the gun
+    @param gun_type (string): the type of gun
+    @return json: a status message
+    """
     data = request.get_json()
     gun_name = data["gun_name"]
     gun_type = data["gun_type"]
     
-    if db.add_gun(gun_name, gun_type):
-        return {"status": "success"}
-    else:
-        return {"status": "failed to add gun"}
+    db.add_gun(gun_name, gun_type)
+    return {"status": "success"}
 
 @app.route("/api/guns", methods = ["GET"])
-def search_gun():
-    gun_name = url_parser.unquote(request.args.get("name"), "")
-    result = db.get_gun(gun_name)
-    return json.dumps(result)
+def get_gun():
+    """Search for a gun in the database
+    @param gun_name (string, optional): the name of the gun
+    @return json: a JSON object with the result
+    """
+    gun_name = request.args.get("name")
+    if gun_name is not None:
+        gun_name = url_parser.unquote(gun_name)
+    return db.get_gun(gun_name)
 
 @app.route("/api/reports", methods = ["POST"])
 def add_report():
+    """Add a report to the database
+    @param timestamp (int): the UNIX timestamp of the report
+    @param coord_lat (float): the latitude coordinate
+    @param coord_long (float): the longitude coordinate
+    @param gun (string): the name of the gun
+    @return json: a status message
+    """
     data = request.get_json()
     timestamp = data["timestamp"]
     coord_lat = data["coord_lat"]
@@ -55,18 +64,30 @@ def add_report():
 
 @app.route("/api/reports", methods = ["GET"])
 def get_report():
+    """Search for a report in the database
+    @param report_id (int, optional): the report ID
+    @param time_from (int, optional): UNIX timestamp of the start of the range
+    @param time_to (int, optional): UNIX timestamp of the beginning of the range
+    @return (json): a JSON object with the result
+    """
     report_id = request.args.get("id")
     time_from = request.args.get("time_from", type=int)
     time_to   = request.args.get("time_to",   type=int)
 
-    if time_from and time_to:
-        result = db.get_report_range(time_from, time_to)
+    if time_from is not None and time_to is not None:
+        return db.get_report_range(time_from, time_to)
     else:
-        result = db.get_report(report_id)
-    return json.dumps(result, default=int)
+        return db.get_report(report_id)
 
 @app.route("/api/gunshots", methods = ["POST"])
 def add_gunshot():
+    """Add record of a determined gunshot based on reports
+    @param timestamp (int): average UNIX timestamp of the gunshot
+    @param coord_lat (float): the latitude coordinate
+    @param coord_long (float): the longitude coordinate
+    @param gun (string): the name of the gun
+    @return json: a status message
+    """
     data = request.get_json()
     timestamp = data["timestamp"]
     coord_lat = data["coord_lat"]
@@ -78,9 +99,12 @@ def add_gunshot():
 
 @app.route("/api/gunshots", methods = ["GET"])
 def get_gunshot():
+    """Search for gunshots based on time or location (or both)
+    @param timestamp (int, optional): UNIX timestamp of the gunshot
+    @param coord (string, optional): the combined latitude and longitude coordinate
+    @return (json): a JSON object with the result
+    """
     timestamp = request.args.get("timestamp", type=int)
     coord = request.args.get("coord")
 
-    result = db.get_gunshot(timestamp, coord)
-    print(result)
-    return json.dumps(result, default=int)
+    return db.get_gunshot(timestamp, coord)
