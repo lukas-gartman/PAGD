@@ -1,7 +1,36 @@
 ## Requirements
-numpy, matplotlib, and tensorflow are required.
+numpy, matplotlib, json, scipy, and tensorflow are required.
 ```
-pip install numpy matplotlib tensorflow
+pip install numpy matplotlib json skipy tensorflow 
 ```
 ## How to use
-Great care is needed to keep all of the training data in the same dimensions. Use **.shape** to see if this is true. A subfolder called **data** is needed to exist next to **main.py**, containing all of the .wav files you intend to convert to spectrograms.
+### Plotting
+PlotWave() - Display a wave using getWave()
+plotSpectrogram() - Display a spectrogram with correctly labeled axis by supplying a spectrogram, wave and its sampleRate
+plotSpectrogramSimple() - Display a spectrogram by supplying a spectrogram
+### Helper functions
+load_wav_16k_mono() - Accepts 48khz and 16khz .wav files and loads them as a wave with 16k sampleRate
+load_wav_8k_mono() - Accepts 48khz, 16khz, 8khz .wav files and loads them as a wave with 16k sampleRate
+shortenWave() - Used for optimization, it truncates a supplied wave to only contain the gunshot in a 500ms window (TO DO)
+collectPaths() - Get all filepaths of a folder containing sub-folders with audio samples
+### 
+processFolder() - Generate trainingdata and output them to a predefined folder
+trainModel() - Use a folder with positive and a folder with negative training data to train a trainModel
+
+### Training a model 
+0. Make sure you have the following folder architecture before proceeding to the next step
+`- main.py
+- data
+    - deviceType1
+        - WeaponType1
+            - .wav files
+    - deviceType2
+        - WeaponType1
+            - .wav files
+- trainingDataPos8khz
+    - Positive training data in .json files
+- trainingDataNeg8khz
+    - Negative training data in .json files   `
+_(replace 8 with 16 if you wish you train on data with 16khz samplerate)_
+1. Process the positive and negative audio you wish to use
+2. train the model with a specified model
