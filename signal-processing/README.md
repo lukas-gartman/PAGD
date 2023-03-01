@@ -40,5 +40,5 @@ Change batchSize to increase/decrease the number of .json files loaded per itera
 - trainingDataNeg8khz
     - Negative training data in .json files   `
 _(replace 8 with 16 if you wish you train on data with 16khz samplerate)_
-1. Process the positive and negative audio you wish to use
-2. train the model with a specified model
+1. Process the positive and negative audio you wish to use with **processFolder()**
+2. train the model with a specified model with **trainModel()**
