@@ -29,12 +29,10 @@ Change batchSize to increase/decrease the number of .json files loaded per itera
 0. Make sure you have the following folder hierarchy before proceeding to the next step
 `- main.py
 - data
-    - audioSourceType1
-        - deviceType1
+    - audioSourceType1 #can have several here
+        - deviceType1 #can have several here
             - WeaponType1
                 - .wav files
-        #can have several here
-    - #can have several here
 - trainingDataPos8khz
     - Positive training data in .json files
 - trainingDataNeg8khz
