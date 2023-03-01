@@ -35,6 +35,13 @@ class Database:
             self.cursor.close()
         if self.conn is not None:
             self.conn.close()
+    
+    def _is_connected(self):
+        try:
+            self.conn.ping()
+        except:
+            return False
+        return True
 
     def execute(self, query, values = None):
         """Execute an SQL query
@@ -42,9 +49,10 @@ class Database:
         @param values tuple: the parameter values for each %s in the query
         @return 
         """
-        if self.cursor is None:
+        if not self._is_connected():
+            print("MySQL server has gone away. Reconnecting...")
             self._connect()
-
+        
         self.cursor.execute(query, values)
         result = self.cursor.fetchall()
         self.conn.commit()
