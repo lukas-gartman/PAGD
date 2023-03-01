@@ -13,7 +13,7 @@ plotSpectrogramSimple() - Display a spectrogram by supplying a spectrogram
 ### Helper functions
 **load_wav_16k_mono()** - Accepts 48khz and 16khz .wav files and loads them as a wave with 16k sampleRate
 
-**load_wav_8k_mono()** - Accepts 48khz, 16khz, 8khz .wav files and loads them as a wave with 16k sampleRate
+**load_wav_8k_mono()** - Accepts 48khz, 16khz, 8khz .wav files and loads them as a wave with 8k sampleRate
 
 **shortenWave()** - Used for optimization, it truncates a supplied wave to only contain the gunshot in a 500ms window (TO DO)
 
