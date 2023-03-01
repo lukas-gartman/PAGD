@@ -86,6 +86,25 @@ def load_wav_8k_mono(fileName):
     np.array(wav_8k)
     return wav_8k
 
+def load_wav_8k_mono(fileName):
+    sampleRate, wav = read(fileName)  # Read file and get sample rate and audio data
+    if wav.ndim == 1:  # Check if audio data is mono
+        wav = np.stack((wav, wav), axis=-1)  # Convert mono to stereo
+    # Select downsampling factor
+    if sampleRate == 48000:
+        downsampleFac = 6
+    elif sampleRate == 16000:
+        downsampleFac = 3
+    elif sampleRate == 8000:
+        downsampleFac = 1
+    else:
+        raise ValueError("Sample rate not meeting the expected possible sample rates: ", sampleRate)
+    # Downsample to 8kHz
+    wav_8k = []
+    for el in wav[::downsampleFac]:
+        wav_8k.append(el[0])
+    return np.array(wav_8k)
+
 
 # Extract 500ms of 8khz audio clip that only contains the gunshot
 def shortenWave(wave):
@@ -300,6 +319,6 @@ def trainModel(positivePath="", negativePath="", modelPath=""):
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
     # Turn an entire folder into json files of spectrograms
-    # processFolder(8000, "./data/Gunshot_Sounds/Samsung_Edge_S7", False, False, False)
+    processFolder(8000, "./data/esc-50_something/new_folder/", True, False, False)
     # Train a model ( Actual training methods are yet to be implemented )
-    trainModel("./trainingDataPos8khz", "./trainingDataNeg8khz", "")
+    # trainModel("./trainingDataPos8khz", "./trainingDataNeg8khz", "")
