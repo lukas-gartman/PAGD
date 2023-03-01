@@ -23,6 +23,7 @@ plotSpectrogramSimple() - Display a spectrogram by supplying a spectrogram
 Possible sample rates: 8000, 16000
 
 **trainModel()** - Use a folder with positive and a folder with negative training data to train a trainModel
+
 Change batchSize to increase/decrease the number of .json files loaded per iteration of training, make sure you have enough ram to load the number of training data files = batchSize
 ### Training a model 
 0. Make sure you have the following folder architecture before proceeding to the next step
