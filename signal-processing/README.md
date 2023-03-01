@@ -30,8 +30,8 @@ Change batchSize to increase/decrease the number of .json files loaded per itera
 `- main.py
 - data
     - Gunshot_Sounds
-        - deviceType1 #can have several here
-            - WeaponType1
+        - deviceTypes (Several folders)
+            - WeaponTypes (Several folders)
                 - .wav files
 - trainingDataPos8khz
     - Positive training data in .json files
