@@ -73,11 +73,13 @@ class Database:
                 # get the name of the column and set its value in the dictionary
                 row_dict[self.cursor.description[i][0]] = row[i]
             row_dicts.append(row_dict)
-        json_obj = json.dumps(row_dicts, default=default)
+        json_str = json.dumps(row_dicts, default=default)
 
         # remove the wrapping array for single results
         if len(row_dicts) == 1:
-            json_obj = json_obj[1:-1]
+            json_str = json_str[1:-1]
+
+        json_obj = json.loads(json_str)
         
         # convert the list of dictionaries to a JSON object
         return json_obj
