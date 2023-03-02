@@ -9,11 +9,6 @@ POS = './data/Gunshot_Sounds'
 DEMO_FILE = '/Samsung_Edge_S7/BoltAction22_Samsung/SA_004B_S02.wav'
 PARENT_DIR = './data/Gunshot_Sounds/Samsung_Edge_S7/Glock45_Samsung'
 
-
-# pos = tf.data.Dataset.list_files("./data/Gunshot_Sounds/Samsung_Edge_S7/Glock45_Samsung" + '\*.wav')
-# data = tf.data.Dataset.zip((pos, tf.data.Dataset.from_tensor_slices(tf.ones(len(pos)))))
-
-
 # Visualize the wave
 def plotWave(wave, sampleRate):
     f = sampleRate
@@ -50,30 +45,36 @@ def plotSpectrogramSimple(spectrogram):
 
 # Load an audio file into 16khz format
 def load_wav_16k_mono(fileName):
-    contents = tf.io.read_file(fileName)  # Read file
-    wav, sampleRate = tf.audio.decode_wav(contents, desired_channels=1)  # Decode audio
-    wav = tf.squeeze(wav, axis=-1)  # Unpack unnecessary arrays
+    sampleRate, wav = read(fileName)  # Read file and get sample rate and audio data
+    if wav.ndim == 1:  # Check if audio data is mono
+        wav = np.stack((wav, wav), axis=-1)  # Convert mono to stereo
     wav_16k = []
-    # Down-sample to 16khz if required
+    # Select downsampling factor
     if sampleRate == 48000:
-        for el in wav[::3]:
-            wav_16k.append(el)
-        np.array(wav_16k)
+        downsampleFac = 3
+    elif sampleRate == 32000:
+        downsampleFac = 2
     elif sampleRate == 16000:
-        wav_16k = wav
+        downsampleFac = 1
     else:
         raise Exception("Sample rate not meeting the expected possible sample rates: ", sampleRate)
+    for el in wav[::downsampleFac]:
+            wav_16k.append(el[0])
+    np.array(wav_16k)
     return wav_16k
 
 
 # Load an audio file into 8khz format
 def load_wav_8k_mono(fileName):
-    contents = read(fileName)  # Read file
-    sampleRate, wav = contents  # Decode audio
+    sampleRate, wav = read(fileName)  # Read file and get sample rate and audio data
+    if wav.ndim == 1:  # Check if audio data is mono
+        wav = np.stack((wav, wav), axis=-1)  # Convert mono to stereo
     wav_8k = []
     # Select downsampling factor
     if sampleRate == 48000:
         downsampleFac = 6
+    elif sampleRate == 32000:
+        downsampleFac = 4
     elif sampleRate == 16000:
         downsampleFac = 3
     elif sampleRate == 8000:
@@ -82,28 +83,9 @@ def load_wav_8k_mono(fileName):
         raise Exception("Sample rate not meeting the expected possible sample rates: ", sampleRate)
     # Downsample to 8khz
     for el in wav[::downsampleFac]:
-        wav_8k.append(el[0])
+            wav_8k.append(el[0])
     np.array(wav_8k)
     return wav_8k
-
-def load_wav_8k_mono(fileName):
-    sampleRate, wav = read(fileName)  # Read file and get sample rate and audio data
-    if wav.ndim == 1:  # Check if audio data is mono
-        wav = np.stack((wav, wav), axis=-1)  # Convert mono to stereo
-    # Select downsampling factor
-    if sampleRate == 48000:
-        downsampleFac = 6
-    elif sampleRate == 16000:
-        downsampleFac = 3
-    elif sampleRate == 8000:
-        downsampleFac = 1
-    else:
-        raise ValueError("Sample rate not meeting the expected possible sample rates: ", sampleRate)
-    # Downsample to 8kHz
-    wav_8k = []
-    for el in wav[::downsampleFac]:
-        wav_8k.append(el[0])
-    return np.array(wav_8k)
 
 
 # Extract 500ms of 8khz audio clip that only contains the gunshot
@@ -255,6 +237,7 @@ def processFolder(sampleRate: int, path: str, negative: bool, debug: bool, overW
                   i)
         else:  # Save the processed data in a folder
             output.append(spectrogram)
+    tensorWriteJSON(output, filePath)
 
 
 # Function to help with concatenation of nonexistent datasets
@@ -267,7 +250,7 @@ def safeTensorConcatenate(dataset1, dataset2):
 
 
 # Grabs files from folders in batches and trains a model with it
-def trainModel(positivePath="", negativePath="", modelPath=""):
+def trainModel(positivePath="./trainingDataPos8khz", negativePath="./trainingDataNeg8khz", modelPath=""):
     posFilesPath = os.listdir(positivePath)
     negFilesPath = os.listdir(negativePath)
     batchSize = 1  # higher values increases randomness of weapon types as well as pos and negative data
@@ -305,7 +288,7 @@ def trainModel(positivePath="", negativePath="", modelPath=""):
         data = data.prefetch(8)
         train = data.take(36)
         # Just to show that it works, it picks out a random sample and shows it
-        # Delete this when you've seen it once and can confirm that it works
+        # Delete this when you've seen it once and can c onfirm that it works
         samples, labels = train.as_numpy_iterator().next()
         plt.figure(figsize=(30, 20))
         plt.imshow(tf.transpose(samples[0])[0])
@@ -318,7 +301,19 @@ def trainModel(positivePath="", negativePath="", modelPath=""):
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    # Turn an entire folder into json files of spectrograms
+    '''# processFolder(8000, "./data/Gunshot_Sounds/Samsung_Edge_S7", False, False, False)
     processFolder(8000, "./data/esc-50_something/new_folder/", True, False, False)
     # Train a model ( Actual training methods are yet to be implemented )
-    # trainModel("./trainingDataPos8khz", "./trainingDataNeg8khz", "")
+    trainModel("./trainingDataPos8khz", "./trainingDataNeg8khz", "")
+    # trainModel("./trainingDataPos8khz", "./trainingDataNeg8khz", "")'''
+
+    # Generate positive training data that picks up where you left off
+    processFolder(8000, "./data/Gunshot_Sounds/Samsung_Edge_S7", False, False, False)
+    #./data/Gunshot_Sounds/Samsung_Edge_S7
+    #./data/Gunshot_Sounds_Own_Recordings/Samsung_Edge_S6
+    #./data/Gunshot_Sounds_Own_Recordings/Samsung_Galaxy_S20
+
+    # Generate negative training data that picks up where you left off
+    #processFolder(8000, "./data/Windy_Sounds", True, False, False)
+    # Train a model ( Actual training methods are yet to be implemented )
+    #trainModel(modelPath="")
