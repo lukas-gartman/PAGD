@@ -1,9 +1,16 @@
+import sys
 from database import Database
+# import secrets
+# import hashlib
 
 class PagdDB(Database):
     def __init__(self, user, password):
-        super().__init__("tottes.net", 3306, user, password, "pagd")
-   
+        try:
+            super().__init__("tottes.net", 3306, user, password, "pagd")
+        except Exception: # hack-fix... should be done properly
+            print("Incorrect password")
+            sys.exit(1)
+    
     def add_gun(self, gun_name, gun_type):
         """Add a new gun
         @param gun_name (string): the name of the gun

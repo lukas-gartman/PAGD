@@ -1,23 +1,57 @@
-import sys
 import json
-from flask import Flask, request
+from flask import Flask, request, abort
 from getpass import getpass
 import urllib.parse as url_parser
+import time
+import base64
+import os
+from collections.abc import Mapping
+import jwt
 
 from pagdDB import PagdDB
 
 app = Flask(__name__)
-try:
-    db = PagdDB("pagd", getpass("Database password: "))
-except Exception: # hack-fix... should be done properly
-   print("Incorrect password")
-   sys.exit(1)
+db = PagdDB("pagd", getpass("Database password: "))
+SECRET_KEY = base64.b64decode(os.environ["JWT_SECRET_KEY"].encode("utf-8")) # decode the secret key stored in environment
+
+@app.before_request
+def auth():
+    """Authenticate user for each API call by verifying their JWT token in the Authorization header
+    @param Authorization (string): the JWT token included in the Authorization header
+    """
+    # no authentication needed for anything other than the API
+    if not request.path.startswith("/api"):
+        return
+    
+    token = request.headers.get("Authorization")
+    if not token: # token not provided
+        abort(401, description="No Authorization header was provided.")
+    
+    try:
+        decoded_token = jwt.decode(token, SECRET_KEY, "HS256")
+    except jwt.DecodeError as ex:
+        print("Invalid token:", str(ex))
+        abort(401, description=f"Invalid token: {str(ex)}")
 
 @app.route("/")
 def hello_world():
     return {
         "message": "Hello, World!"
     }
+
+@app.route("/register")
+def register():
+    """Retrieve a JWT token used to authorize API calls. Include the token in the Authorization header.
+    @return (json): the JWT token containing the registration date timestamp in its payload
+    """
+    # information that can be extracted when decoding the token
+    payload = {
+        "registration": round(time.time() * 1000) # current UNIX timestmap in milliseconds
+        # TODO: add "exp" for expiration date
+    }
+    jwt_token = jwt.encode(payload, SECRET_KEY, "HS256") # create the JWT token
+
+    return {"token": jwt_token}
 
 @app.route("/api/guns", methods = ["POST"])
 def add_gun():
