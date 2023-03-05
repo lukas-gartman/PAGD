@@ -1,0 +1,6 @@
+Downsample audio files
+
+foreach ($file in Get-ChildItem -Path "C:\path\to\folder" -Filter *.wav -Recurse) {
+  ffmpeg -i $file.FullName -ar 8000 -ac 1 -ab 64k -f wav "$($file.DirectoryName)\$($file.BaseName)_downsampled.wav"
+  Remove-Item $file.FullName
+}

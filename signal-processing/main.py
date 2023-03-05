@@ -4,6 +4,7 @@ from scipy.io.wavfile import read
 from matplotlib import pyplot as plt
 import tensorflow as tf
 import json
+from TEST import *
 
 POS = './data/Gunshot_Sounds'
 DEMO_FILE = '/Samsung_Edge_S7/BoltAction22_Samsung/SA_004B_S02.wav'
@@ -280,35 +281,45 @@ def trainModel(positivePath="./trainingDataPos8khz", negativePath="./trainingDat
                 else:
                     negData.concatenate(file)
                 negIndex += 1
+        print(len(negData), "negdata")
+        print(len(posData), "posdata")
         data = safeTensorConcatenate(posData, negData)
         data = data.cache()
         # Adjust these values to your liking (Use len(data))
         data = data.shuffle(buffer_size=5000)
         data = data.batch(16)
         data = data.prefetch(8)
-        train = data.take(36)
-        # Just to show that it works, it picks out a random sample and shows it
-        # Delete this when you've seen it once and can c onfirm that it works
+        train = data.take(14)
+        test = data.skip(14).take(6)
         samples, labels = train.as_numpy_iterator().next()
-        plt.figure(figsize=(30, 20))
-        plt.imshow(tf.transpose(samples[0])[0])
-        plt.show()
-        print(samples, samples.shape)
-        print(labels, labels.shape)
-        # Train model here
-        # import(modelpath) :P
+        print(samples.shape)
+        print(len(data))
+        # Just to show that it works, it picks out a random sample and shows it
+        # Delete this when you've seen it once and can confirm that it works
+        #samples, labels = train.as_numpy_iterator().next()
+        #plt.figure(figsize=(30, 20))
+        #plt.imshow(tf.transpose(samples[0])[0])
+        #plt.show()
+        #print(samples, samples.shape)
+        #print(labels, labels.shape)
+        # Train the model
+        
+        #model.fit(X_train, y_train, epochs=10, batch_size=32, validation_data=(X_val, y_val))
+        # For y_train, it's all sounds that are not gunshot sounds. In order for the module to be trained, it needs to be able to distinguish between
+        # what sounds are gunshot sounds and what sounds are not gunshot sounds respectively. Meanwhile, x_train is the dataset containing all the 
+        # gunshot sounds we've collected. We could use ESC-50 and UrbanSound8K datasets in order to train it.
+
 
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
     '''# processFolder(8000, "./data/Gunshot_Sounds/Samsung_Edge_S7", False, False, False)
-    processFolder(8000, "./data/esc-50_something/new_folder/", True, False, False)
     # Train a model ( Actual training methods are yet to be implemented )
     trainModel("./trainingDataPos8khz", "./trainingDataNeg8khz", "")
     # trainModel("./trainingDataPos8khz", "./trainingDataNeg8khz", "")'''
 
     # Generate positive training data that picks up where you left off
-    processFolder(8000, "./data/Gunshot_Sounds/Samsung_Edge_S7", False, False, False)
+    # processFolder(8000, "./data/urban8k/urban", True, False, False)
     #./data/Gunshot_Sounds/Samsung_Edge_S7
     #./data/Gunshot_Sounds_Own_Recordings/Samsung_Edge_S6
     #./data/Gunshot_Sounds_Own_Recordings/Samsung_Galaxy_S20
@@ -316,4 +327,4 @@ if __name__ == '__main__':
     # Generate negative training data that picks up where you left off
     #processFolder(8000, "./data/Windy_Sounds", True, False, False)
     # Train a model ( Actual training methods are yet to be implemented )
-    #trainModel(modelPath="")
+    trainModel(modelPath="TEST.py")

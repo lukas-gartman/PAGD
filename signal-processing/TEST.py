@@ -1,15 +1,4 @@
-# pip install soundata
-
 import tensorflow as tf
-import soundata
-
-dataset = soundata.initialize('urbansound8k')
-dataset.download()  # download the dataset
-dataset.validate()  # validate that all the expected files are there
-
-example_clip = dataset.choice_clip()  # choose a random example clip
-print(example_clip)  # see the available data
-
 # Define the model
 model = tf.keras.Sequential([
     tf.keras.layers.Conv1D(32, 3, activation='relu', input_shape=(timesteps, input_dim)),
