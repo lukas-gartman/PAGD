@@ -84,6 +84,7 @@ def add_report():
     @param timestamp (int): the UNIX timestamp of the report
     @param coord_lat (float): the latitude coordinate
     @param coord_long (float): the longitude coordinate
+    @param coord_alt (float): the altitude coordinate
     @param gun (string): the name of the gun
     @return json: a status message
     """
@@ -91,9 +92,10 @@ def add_report():
     timestamp = data["timestamp"]
     coord_lat = data["coord_lat"]
     coord_long = data["coord_long"]
+    coord_alt = data["coord_alt"]
     gun = data["gun"]
 
-    db.add_report(timestamp, coord_lat, coord_long, gun)
+    db.add_report(timestamp, coord_lat, coord_long, coord_alt, gun)
     return {"status": "success"}
 
 @app.route("/api/reports", methods = ["GET"])
@@ -119,16 +121,20 @@ def add_gunshot():
     @param timestamp (int): average UNIX timestamp of the gunshot
     @param coord_lat (float): the latitude coordinate
     @param coord_long (float): the longitude coordinate
+    @param coord_alt (float): the altitude coordinate
     @param gun (string): the name of the gun
+    @param report (int): the report ID
     @return json: a status message
     """
     data = request.get_json()
     timestamp = data["timestamp"]
     coord_lat = data["coord_lat"]
     coord_long = data["coord_long"]
+    coord_alt = data["coord_alt"]
     gun = data["gun"]
+    report = data["report"]
     
-    db.add_gunshot(timestamp, coord_lat, coord_long, gun)
+    db.add_gunshot(timestamp, coord_lat, coord_long, coord_alt, gun, report)
     return {"status": "success"}
 
 @app.route("/api/gunshots", methods = ["GET"])
@@ -139,6 +145,8 @@ def get_gunshot():
     @return (json): a JSON object with the result
     """
     timestamp = request.args.get("timestamp", type=int)
-    coord = request.args.get("coord")
+    coord_lat = request.args.get("coord_lat")
+    coord_long = request.args.get("coord_long")
+    coord_alt = request.args.get("coord_alt")
 
-    return db.get_gunshot(timestamp, coord)
+    return db.get_gunshot(timestamp, coord_lat, coord_long, coord_alt)

@@ -8,16 +8,22 @@ CREATE TABLE Guns(
 
 CREATE TABLE Reports(
     report_id INT PRIMARY KEY AUTO_INCREMENT,
-    timestamp DATETIME(3) DEFAULT NOW(3) NOT NULL,
-    coord VARCHAR(255) NOT NULL,
-    gun VARCHAR(255) NOT NULL,
+    timestamp  DATETIME(3) DEFAULT NOW(3) NOT NULL,
+    coord_lat  FLOAT(23) NOT NULL,
+    coord_long FLOAT(23) NOT NULL,
+    coord_alt  FLOAT(23) NOT NULL,
+    gun        VARCHAR(255) NOT NULL,
     FOREIGN KEY (gun) REFERENCES Guns(name)
 );
 
-CREATE TABLE Gunshots(
-    timestamp DATETIME(3) NOT NULL,
-    coord VARCHAR(255) NOT NULL,
-    gun VARCHAR(255) NOT NULL,
-    PRIMARY KEY (timestamp, coord),
-    FOREIGN KEY (gun) REFERENCES Guns(name)
+CREATE TABLE GunshotReports(
+    timestamp  DATETIME(3) NOT NULL,
+    coord_lat  FLOAT(23) NOT NULL,
+    coord_long FLOAT(23) NOT NULL,
+    coord_alt  FLOAT(23) DEFAULT -1 NOT NULL,
+    gun        VARCHAR(255) NOT NULL,
+    report     INT NOT NULL,
+    PRIMARY KEY (report, timestamp, coord_lat, coord_long),
+    FOREIGN KEY (gun)    REFERENCES Guns(name),
+    FOREIGN KEY (report) REFERENCES Reports(report_id)
 );
