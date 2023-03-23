@@ -118,35 +118,54 @@ def get_report():
 @app.route("/api/gunshots", methods = ["POST"])
 def add_gunshot():
     """Add record of a determined gunshot based on reports
-    @param timestamp (int): average UNIX timestamp of the gunshot
+    @param gunshot_id (int): the gunshot ID
+    @param report (int): the report ID which the determined gunshot is based on
+    @param timestamp (int): determined UNIX timestamp of the gunshot
     @param coord_lat (float): the latitude coordinate
     @param coord_long (float): the longitude coordinate
     @param coord_alt (float): the altitude coordinate
     @param gun (string): the name of the gun
-    @param report (int): the report ID
     @return json: a status message
     """
     data = request.get_json()
+    gunshot_id = data["gunshot_id"]
+    report = data["report"]
     timestamp = data["timestamp"]
     coord_lat = data["coord_lat"]
     coord_long = data["coord_long"]
     coord_alt = data["coord_alt"]
     gun = data["gun"]
-    report = data["report"]
     
-    db.add_gunshot(timestamp, coord_lat, coord_long, coord_alt, gun, report)
+    db.add_gunshot(gunshot_id, report, timestamp, coord_lat, coord_long, coord_alt, gun)
     return {"status": "success"}
 
 @app.route("/api/gunshots", methods = ["GET"])
 def get_gunshot():
     """Search for gunshots based on time or location (or both)
-    @param timestamp (int, optional): UNIX timestamp of the gunshot
-    @param coord (string, optional): the combined latitude and longitude coordinate
+    @param gunshot_id (int, optional): the gunshot ID
+    @param time_from (int, optional): UNIX timestamp of the start of the range
+    @param time_to (int, optional): UNIX timestamp of the beginning of the range
     @return (json): a JSON object with the result
     """
-    timestamp = request.args.get("timestamp", type=int)
-    coord_lat = request.args.get("coord_lat")
-    coord_long = request.args.get("coord_long")
-    coord_alt = request.args.get("coord_alt")
+    gunshot_id = request.args.get("id")
+    time_from = request.args.get("time_from", type=int)
+    time_to = request.args.get("time_to", type=int)
 
-    return db.get_gunshot(timestamp, coord_lat, coord_long, coord_alt)
+    if gunshot_id:
+        return db.get_gunshot_by_id(gunshot_id)
+    elif time_from and time_to:
+        return db.get_gunshots_by_timestamp(time_from, time_to)
+    elif time_from:
+        time_now = time.time() * 1000
+        return db.get_gunshots_by_timestamp(time_from, time_now)
+    elif time_to:
+        return db.get_gunshots_by_timestamp(0, time_to)
+    
+    return db.get_all_gunshots()
+
+@app.route("/api/gunshots/latest", methods = ["GET"])
+def get_latest_gunshot_id():
+    """Get the most recent gunshot ID
+    @return (int): the most recent gunshot ID
+    """
+    return db.get_latest_gunshot_id()
