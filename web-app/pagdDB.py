@@ -78,55 +78,59 @@ class PagdDB(Database):
         rows = self.execute(query, (time_from / 1000, time_to / 1000))
         return self.to_json(rows, default=int)
 
-    def add_gunshot(self, timestamp, coord_lat, coord_long, coord_alt, gun, report):
+    def add_gunshot(self, gunshot_id, report, timestamp, coord_lat, coord_long, coord_alt, gun):
         """Add record of a determined gunshot based on the given report
-        @param timestamp (int): average UNIX timestamp of the gunshot
+        @param gunshot_id (int): the gunshot ID
+        @param report (int): the report ID which the determined gunshot is based on
+        @param timestamp (int): determined UNIX timestamp of the gunshot
         @param coord_lat (float): the latitude coordinate
         @param coord_long (float): the longitude coordinate
         @param coord_alt (float): the altitude coordinate
         @param gun (string): the name of the gun
-        @param report (int): the report ID
-        @return (json): a JSON object with the result
+        @return json: a status message
         """
         if coord_alt:
-            query = "INSERT INTO GunshotReports (timestamp, coord_lat, coord_long, coord_alt, gun, report) VALUES (FROM_UNIXTIME(%s), %s, %s, %s, %s, %s) RETURNING *;"
-            rows = self.execute(query, (timestamp / 1000, coord_lat, coord_long, coord_alt, gun, report))
+            query = "INSERT INTO GunshotReports (gunshot_id, report, timestamp, coord_lat, coord_long, coord_alt, gun) VALUES (%s, %s, FROM_UNIXTIME(%s), %s, %s, %s, %s) RETURNING *;"
+            rows = self.execute(query, (gunshot_id, report, timestamp / 1000, coord_lat, coord_long, coord_alt, gun))
         else:
-            query = "INSERT INTO GunshotReports (timestamp, coord_lat, coord_long, gun, report) VALUES (FROM_UNIXTIME(%s), %s, %s, %s, %s) RETURNING *;"
-            rows = self.execute(query, (timestamp / 1000, coord_lat, coord_long, gun, report))
+            query = "INSERT INTO GunshotReports (gunshot_id, report, timestamp, coord_lat, coord_long, gun) VALUES (%s, %s, FROM_UNIXTIME(%s), %s, %s, %s) RETURNING *;"
+            rows = self.execute(query, (gunshot_id, report, timestamp / 1000, coord_lat, coord_long, gun))
         
         return self.to_json(rows, default=str)
     
-    def get_gunshot(self, timestamp = None, coord_lat = None, coord_long = None, coord_alt = None):
+    def get_gunshot_by_id(self, gunshot_id):
         """Search for gunshots based on time or location (or both)
-        @param timestamp (int): UNIX timestamp of the gunshot
-        @param coord_lat (float): the latitude coordinate
-        @param coord_long (float): the longitude coordinate
-        @param coord_alt (float): the altitude coordinate
+        @param gunshot_id (int): the gunshot ID
         @return (json): a JSON object with the result
         """
-        result = None
-        coord_2d = None if not coord_lat or not coord_long else f"{coord_lat},{coord_long}"
-        coord_3d = None if not coord_2d  or not coord_alt  else f"{coord_lat},{coord_long},{coord_alt}"
-
+        query = "SELECT (SELECT ROUND(UNIX_TIMESTAMP(timestamp) * 1000)) AS timestamp, coord_lat, coord_long, coord_alt, gun FROM GunshotReports WHERE gunshot_id = %s LIMIT 1;"
+        row = self.execute(query, (gunshot_id,)) # must create a tuple
+        return self.to_json(row, default=int)
+    
+    def get_gunshots_by_timestamp(self, time_from, time_to):
+        """Search for gunshots within the given time range
+        @param time_from (int): UNIX timestamp of the start of the range
+        @param time_to (int):   UNIX timestamp of the start of the range
+        @return (json): a JSON object with the result
+        """
         # queries select the UNIX timestamp in a millisecond format (*1000) and sends data in seconds (/1000)
-        if timestamp and coord_3d:
-            query = "SELECT (SELECT ROUND(UNIX_TIMESTAMP(timestamp) * 1000)) AS timestamp, coord_lat, coord_long, coord_alt, gun FROM GunshotReports WHERE timestamp = FROM_UNIXTIME(%s) AND coord_lat = %s AND coord_long = %s AND coord_alt = %s;"
-            result = self.execute(query, (timestamp / 1000, coord_lat, coord_long, coord_alt))
-        elif timestamp and coord_2d:
-            query = "SELECT (SELECT ROUND(UNIX_TIMESTAMP(timestamp) * 1000)) AS timestamp, coord_lat, coord_long, coord_alt, gun FROM GunshotReports WHERE timestamp = FROM_UNIXTIME(%s) AND coord_lat = %s AND coord_long = %s;"
-            result = self.execute(query, (timestamp / 1000, coord_lat, coord_long))
-        elif timestamp:
-            query = "SELECT (SELECT ROUND(UNIX_TIMESTAMP(timestamp) * 1000)) AS timestamp, coord_lat, coord_long, coord_alt, gun, report FROM GunshotReports WHERE timestamp = FROM_UNIXTIME(%s);"
-            result = self.execute(query, (timestamp / 1000,)) # must create a tuple
-        elif coord_3d:
-            query = "SELECT (SELECT ROUND(UNIX_TIMESTAMP(timestamp) * 1000)) AS timestamp, coord_lat, coord_long, coord_alt, gun, report FROM GunshotReports WHERE coord_lat = %s AND coord_long = %s AND coord_alt = %s;"
-            result = self.execute(query, (coord_lat, coord_long, coord_alt))
-        elif coord_2d:
-            query = "SELECT (SELECT ROUND(UNIX_TIMESTAMP(timestamp) * 1000)) AS timestamp, coord_lat, coord_long, coord_alt, gun, report FROM GunshotReports WHERE coord_lat = %s AND coord_long = %s;"
-            result = self.execute(query, (coord_lat, coord_long))
-        else:
-            query = "SELECT (SELECT ROUND(UNIX_TIMESTAMP(timestamp) * 1000)) AS timestamp, coord_lat, coord_long, coord_alt, gun, report FROM GunshotReports;"
-            result = self.execute(query)
-        
-        return self.to_json(result, default=int)
+        query = "SELECT (SELECT ROUND(UNIX_TIMESTAMP(timestamp) * 1000)) AS timestamp, coord_lat, coord_long, coord_alt, gun FROM GunshotReports WHERE timestamp >= FROM_UNIXTIME(%s) AND timestamp < FROM_UNIXTIME(%s);"
+        rows = self.execute(query, (time_from / 1000, time_to / 1000))
+        return self.to_json(rows, default=int)
+    
+    def get_all_gunshots(self):
+        """Retrieve all gunshots
+        @return (json): a JSON object with the result
+        """
+        query = "SELECT gunshot_id, (SELECT ROUND(UNIX_TIMESTAMP(timestamp) * 1000)) AS timestamp, coord_lat, coord_long, coord_alt, gun FROM GunshotReports;"
+        rows = self.execute(query)
+        return self.to_json(rows, default=int)
+
+    # TODO: def get_gunshot_by_radius(self, midpoint_coord, radius):
+    
+    def get_latest_gunshot_id(self):
+        """Get the most recent gunshot ID
+        @return (int): the most recent gunshot ID
+        """
+        query = "SELECT MAX(gunshot_id) FROM GunshotReports;"
+        return self.execute(query)
