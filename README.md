@@ -1,4 +1,4 @@
-# Privacy Aware Gunshot Detectors - DATX11-23-31 ![PAGD](PAGD-icon-green.png){: width="10%" :align:right}
+# Privacy Aware Gunshot Detectors - DATX11-23-31 ![PAGD](PAGD-icon-green.png){: width="10%"}
 
 
 
