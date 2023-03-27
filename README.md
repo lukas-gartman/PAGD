@@ -1,5 +1,5 @@
-# DATX11-23-31
-
+# Privacy Aware Gunshot Detectors - DATX11-23-31
+![PAGD](PAGD-icon-green.png)
 
 
 ## Getting started
