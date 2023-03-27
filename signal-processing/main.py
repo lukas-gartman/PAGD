@@ -4,7 +4,8 @@ from scipy.io.wavfile import read
 from matplotlib import pyplot as plt
 import tensorflow as tf
 import json
-from TEST import *
+from model import *
+
 
 POS = './data/Gunshot_Sounds'
 DEMO_FILE = '/Samsung_Edge_S7/BoltAction22_Samsung/SA_004B_S02.wav'
@@ -272,7 +273,7 @@ def trainModel(positivePath="./trainingDataPos8khz", negativePath="./trainingDat
                 else:
                     posData.concatenate(file)
                 posIndex += 1
-            # Collect positive data
+            # Collect negative data
             if negIndex < len(negFilesPath):
                 file = tensorReadJSON(negativePath + '/' + negFilesPath[negIndex])
                 file = tf.data.Dataset.zip((file, tf.data.Dataset.from_tensor_slices(tf.zeros(len(file)))))
@@ -281,50 +282,47 @@ def trainModel(positivePath="./trainingDataPos8khz", negativePath="./trainingDat
                 else:
                     negData.concatenate(file)
                 negIndex += 1
-        print(len(negData), "negdata")
-        print(len(posData), "posdata")
         data = safeTensorConcatenate(posData, negData)
+        train_len = int(len(data) * 0.7)
         data = data.cache()
         # Adjust these values to your liking (Use len(data))
-        data = data.shuffle(buffer_size=5000)
-        data = data.batch(16)
-        data = data.prefetch(8)
-        train = data.take(14)
-        test = data.skip(14).take(6)
+        data = data.shuffle(buffer_size=500)
+        data = data.batch(40)
+        data = data.prefetch(20)
+        train = data.take(int(train_len))
+        test = data.skip(int(train_len)).take(int(len(data)) - train_len)
         samples, labels = train.as_numpy_iterator().next()
-        print(samples.shape)
-        print(len(data))
-        # Just to show that it works, it picks out a random sample and shows it
-        # Delete this when you've seen it once and can confirm that it works
-        #samples, labels = train.as_numpy_iterator().next()
-        #plt.figure(figsize=(30, 20))
-        #plt.imshow(tf.transpose(samples[0])[0])
-        #plt.show()
-        #print(samples, samples.shape)
-        #print(labels, labels.shape)
-        # Train the model
-        
-        #model.fit(X_train, y_train, epochs=10, batch_size=32, validation_data=(X_val, y_val))
-        # For y_train, it's all sounds that are not gunshot sounds. In order for the module to be trained, it needs to be able to distinguish between
-        # what sounds are gunshot sounds and what sounds are not gunshot sounds respectively. Meanwhile, x_train is the dataset containing all the 
-        # gunshot sounds we've collected. We could use ESC-50 and UrbanSound8K datasets in order to train it.
+        model.fit(train, epochs=1, validation_data=test)
+    model.save("AI_PAGD")
 
 
+def convertAI(input_path='./AI_PAGD'):
+    converter = tf.lite.TFLiteConverter.from_saved_model(input_path)
+    tflite_model = converter.convert()
+
+    # Save the converted model
+    with open('model.tflite', 'wb') as f:
+        f.write(tflite_model)
+    f.close()
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    '''# processFolder(8000, "./data/Gunshot_Sounds/Samsung_Edge_S7", False, False, False)
+    
+    # processFolder(8000, "./data/Gunshot_Sounds/Samsung_Edge_S7", False, False, False)
     # Train a model ( Actual training methods are yet to be implemented )
-    trainModel("./trainingDataPos8khz", "./trainingDataNeg8khz", "")
-    # trainModel("./trainingDataPos8khz", "./trainingDataNeg8khz", "")'''
+    #trainModel("./trainingDataPos8khz", "./trainingDataNeg8khz", "")
+    # trainModel("./trainingDataPos8khz", "./trainingDataNeg8khz", "")
 
     # Generate positive training data that picks up where you left off
-    # processFolder(8000, "./data/urban8k/urban", True, False, False)
+    #processFolder(8000, "./data/Gunshot_Sounds/Iphone_7", False, False, False)
     #./data/Gunshot_Sounds/Samsung_Edge_S7
     #./data/Gunshot_Sounds_Own_Recordings/Samsung_Edge_S6
     #./data/Gunshot_Sounds_Own_Recordings/Samsung_Galaxy_S20
-
+    # ./data/Gunshot_Sounds/Iphone_7
     # Generate negative training data that picks up where you left off
-    #processFolder(8000, "./data/Windy_Sounds", True, False, False)
+    #processFolder(8000, "./data/Gunshot_Sounds_Own_Recordings/Samsung_Galaxy_S20", False, False, False)
     # Train a model ( Actual training methods are yet to be implemented )
-    trainModel(modelPath="TEST.py")
+    #trainModel(modelPath="TEST.py")
+    
+    #convertAI()
+    pass
