@@ -54,7 +54,8 @@ class Database:
             self._connect()
         
         self.cursor.execute(query, values)
-        result = self.cursor.fetchall() if self.cursor.rowcount > 0 else []
+        r = self.cursor.fetchall()
+        result = r if len(r) > 0 else []
         self.conn.commit()
 
         return result
@@ -73,10 +74,8 @@ class Database:
         for q, v in zip(queries, values):
             try:
                 self.cursor.execute(q, v)
-                if self.cursor.rowcount == 0:
-                    result.append([])
-                else:
-                    result.append(self.cursor.fetchall())
+                r = self.cursor.fetchall()
+                result.append(r if len(r) > 0 else [])
             except Exception as e:
                 print("Error occurred, rolling back database...", str(e), sep="\n\t")
                 self.conn.rollback()
