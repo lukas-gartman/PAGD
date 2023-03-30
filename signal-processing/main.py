@@ -200,19 +200,15 @@ def processOurData(sampleRate: int, path: str, overWrite: bool):
     for i in range(len(filePaths)):
         filepath = path + "/" + filePaths[i]  # Complete path to file
         fileName = filePaths[i]  # Name of the .wav file in the folder
-        destinationFilePath = destinationFolder + '/' + fileName + '.json'  # File written to
-        if os.path.isfile(destinationFilePath) and not overWrite:
-            print("Skipping:" + filePaths[i])
-            continue
+
         wave = getWave(filepath, sampleRate)  # Load file and get wave
         buffer = []
-        start = 0
-        end = len(wave)
+
         if sampleRate == 8000:
             step = 16384  # 2 seconds 8khz
         else:
             step = 16384*2 # 2 seconds 16khz
-        for i in range(start, end, step):
+        for i in range(0, len(wave), step):
             x = i
             buffer.append(wave[x:x + step])
         for i in range(len(buffer)):
@@ -220,7 +216,14 @@ def processOurData(sampleRate: int, path: str, overWrite: bool):
             buffer[i] = preProcessWave(buffer[i],sampleRate)
             buffer[i] = getSpectrogram(buffer[i])  # Obtain the spectrogram
             #plotSpectrogram(buffer[i], wave, sampleRate) # Demo
-        tensorWriteJSON(buffer, destinationFilePath)
+        index = 0
+        for i in range(0, len(buffer), 200):
+            x = i
+            destinationFilePath = destinationFolder + '/' + fileName[:-4] + str(index) + '.json'  # File written to
+            index += 1
+            if os.path.isfile(destinationFilePath) and not overWrite:
+                continue
+            tensorWriteJSON(buffer[x:x + 200], destinationFilePath)
 
 # Process all .wav files into spectrograms from a folder
 def processFolder(sampleRate: int, path: str, negative: bool, debug: bool, overWrite: bool):
