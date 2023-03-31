@@ -4,6 +4,7 @@ signal-processing/data/ESC-50_something/New_folder/New folder2/1-100032-A-0.wav
 *.json
 signal-processing/data/Gunshot_Sounds/Iphone 7/MP40_1_iPhone/.DS_Store
 *.pyc
+<<<<<<< Updated upstream
 web-app/test_requests.py
 signal-processing/AI_PAGD/variables/variables.data-00000-of-00001
 signal-processing/AI_PAGD/variables/variables.index
@@ -14,3 +15,20 @@ signal-processing/AI_PAGD1/variables/variables.data-00000-of-00001
 signal-processing/AI_PAGD1/variables/variables.index
 signal-processing/model.tflite1
 signal-processing/model.tflite2
+=======
+signal-processing/AI_PAGD1/saved_model.pb
+signal-processing/AI_PAGD1/variables/variables.data-00000-of-00001
+signal-processing/AI_PAGD1/variables/variables.index
+signal-processing/AI_PAGD1/keras_metadata.pb
+signal-processing/AI_PAGD1/fingerprint.pb
+signal-processing/AI_PAGD/variables/variables.index
+signal-processing/AI_PAGD/variables/variables.data-00000-of-00001
+signal-processing/AI_PAGD/saved_model.pb
+signal-processing/AI_PAGD/keras_metadata.pb
+signal-processing/AI_PAGD/fingerprint.pb
+signal-processing/model.tflite1
+signal-processing/model.tflite2
+signal-processing/AI_PAGD/saved_model.pb
+signal-processing/AI_PAGD/keras_metadata.pb
+signal-processing/AI_PAGD/fingerprint.pb
+>>>>>>> Stashed changes

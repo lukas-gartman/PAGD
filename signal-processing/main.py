@@ -355,5 +355,5 @@ if __name__ == '__main__':
     # Train a model ( Actual training methods are yet to be implemented )
     #trainModel(modelPath="TEST.py")
     
-    #convertAI()
+    convertAI()
     pass
