@@ -2,7 +2,6 @@ import json
 from flask import Flask, request, abort
 from getpass import getpass
 import urllib.parse as url_parser
-import uuid
 import time
 import base64
 import os
@@ -14,8 +13,6 @@ from pagdDB import PagdDB
 app = Flask(__name__)
 db = PagdDB("pagd", getpass("Database password: "))
 SECRET_KEY = base64.b64decode(os.environ["JWT_SECRET_KEY"].encode("utf-8")) # decode the secret key stored in environment
-
-client_id = None
 
 @app.before_request
 def auth():
@@ -32,8 +29,7 @@ def auth():
     
     try:
         decoded_token = jwt.decode(token, SECRET_KEY, "HS256")
-        client_id = decoded_token["id"]
-    except (jwt.DecodeError, KeyError) as ex:
+    except jwt.DecodeError as ex:
         print("Invalid token:", str(ex))
         abort(401, description=f"Invalid token: {str(ex)}")
 
@@ -48,12 +44,10 @@ def register():
     """Retrieve a JWT token used to authorize API calls. Include the token in the Authorization header.
     @return (json): the JWT token containing the registration date timestamp in its payload
     """
-    curr_time = round(time.time() * 1000)
     # information that can be extracted when decoding the token
     payload = {
-        "registration": curr_time, # current UNIX timestmap in milliseconds
-        "id": str(uuid.uuid4()), # generate a client ID
-        "exp": curr_time + 30*24*60*60*1000 # current time + 30 days in milliseconds
+        "registration": round(time.time() * 1000) # current UNIX timestmap in milliseconds
+        # TODO: add "exp" for expiration date
     }
     jwt_token = jwt.encode(payload, SECRET_KEY, "HS256") # create the JWT token
 
@@ -92,7 +86,7 @@ def add_report():
     @param coord_long (float): the longitude coordinate
     @param coord_alt (float): the altitude coordinate
     @param gun (string): the name of the gun
-    @return (json): a JSON object with the newly added report
+    @return json: a status message
     """
     data = request.get_json()
     timestamp = data["timestamp"]
@@ -101,8 +95,8 @@ def add_report():
     coord_alt = data["coord_alt"]
     gun = data["gun"]
 
-    result = db.add_report(timestamp, coord_lat, coord_long, coord_alt, gun)
-    return result or abort(500, description="Failed to add the report")
+    db.add_report(timestamp, coord_lat, coord_long, coord_alt, gun)
+    return {"status": "success"}
 
 @app.route("/api/reports", methods = ["GET"])
 def get_report():
@@ -121,19 +115,18 @@ def get_report():
     else:
         return db.get_report(report_id)
 
-# TODO: separate this into "/api/gunshots/temporary"
 @app.route("/api/gunshots", methods = ["POST"])
 def add_gunshot():
-    """Add record of a determined gunshot event based on the given report
+    """Add record of a determined gunshot based on reports
     @param gunshot_id (int): the gunshot ID
-    @param report_id (int): the report ID which the determined gunshot is based on
+    @param report (int): the report ID which the determined gunshot is based on
     @param timestamp (int): determined UNIX timestamp of the gunshot
     @param coord_lat (float): the latitude coordinate
     @param coord_long (float): the longitude coordinate
     @param coord_alt (float): the altitude coordinate
     @param gun (string): the name of the gun
-    @param shots_fired (int): the number of shots that were fired in this event
-    @return json: a JSON object with the inserted value
+    @param report (int): the report ID
+    @return json: a status message
     """
     data = request.get_json()
     gunshot_id = data["gunshot_id"]
@@ -143,43 +136,10 @@ def add_gunshot():
     coord_long = data["coord_long"]
     coord_alt = data["coord_alt"]
     gun = data["gun"]
-    shots_fired = data["shots_fired"]
-
-    if None in (gunshot_id, report, gun): # not enough info to add a gunshot
-        result = {"status": "error", "message": "invalid parameters"}
-    elif None in (timestamp, coord_lat, coord_long, coord_alt): # able to add a temporary entry
-        result = db.add_temp_gunshot(gunshot_id, report_id, gun)
-    else: # able to add a complete gunshot
-        result = db.add_gunshot(gunshot_id, report, timestamp, coord_lat, coord_long, coord_alt, gun, shots_fired)
+    report = data["report"]
     
-    return result or abort(500, description="Failed to add the gunshot")
-
-@app.route("/api/gunshots", methods = ["PUT"])
-def update_gunshot():
-    """Update the data of a gunshot with the given ID
-    @param gunshot_id (int): the gunshot ID
-    @param timestamp (int): determined UNIX timestamp of the gunshot
-    @param coord_lat (float): the latitude coordinate
-    @param coord_long (float): the longitude coordinate
-    @param coord_alt (float): the altitude coordinate
-    @param shots_fired (int): the number of shots that were fired in this event
-    @return json: a status message
-    """
-    data = request.get_json()
-    gunshot_id = data["gunshot_id"]
-    timestamp = data["timestamp"]
-    coord_lat = data["coord_lat"]
-    coord_long = data["coord_long"]
-    coord_alt = data["coord_alt"]
-    gun = data["gun"]
-    shots_fired = data["shots_fired"]
-
-    if None in (gunshot_id, timestamp, coord_lat, coord_long, coord_alt, gun, shots_fired): # not enough info to add a gunshot
-        result = {"status": "error", "message": "invalid parameters"}
-    else:
-        result = db.update_gunshot(gunshot_id, timestamp, coord_lat, coord_long, coord_alt, gun, shots_fired)
-    
-    return result or {"status": "success"}
+    db.add_gunshot(gunshot_id, report, timestamp, coord_lat, coord_long, coord_alt, gun)
+    return {"status": "success"}
 
 @app.route("/api/gunshots", methods = ["GET"])
 def get_gunshot():

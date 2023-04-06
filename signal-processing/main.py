@@ -193,37 +193,6 @@ def getWeaponType(fileName):
         weaponType += char
     return weaponType
 
-# Process all .wav files into spectrograms from long files with negative data we've collected
-def processOurData(sampleRate: int, path: str, overWrite: bool):
-    filePaths = os.listdir(path)
-    destinationFolder = './trainingDataNeg' + str(int(sampleRate / 1000)) + 'khz'
-    for i in range(len(filePaths)):
-        filepath = path + "/" + filePaths[i]  # Complete path to file
-        fileName = filePaths[i]  # Name of the .wav file in the folder
-
-        wave = getWave(filepath, sampleRate)  # Load file and get wave
-        buffer = []
-
-        if sampleRate == 8000:
-            step = 16384  # 2 seconds 8khz
-        else:
-            step = 16384*2 # 2 seconds 16khz
-        for i in range(0, len(wave), step):
-            x = i
-            buffer.append(wave[x:x + step])
-        for i in range(len(buffer)):
-            #wave = buffer[i] # Demo
-            buffer[i] = preProcessWave(buffer[i],sampleRate)
-            buffer[i] = getSpectrogram(buffer[i])  # Obtain the spectrogram
-            #plotSpectrogram(buffer[i], wave, sampleRate) # Demo
-        index = 0
-        for i in range(0, len(buffer), 200):
-            x = i
-            destinationFilePath = destinationFolder + '/' + fileName[:-4] + str(index) + '.json'  # File written to
-            index += 1
-            if os.path.isfile(destinationFilePath) and not overWrite:
-                continue
-            tensorWriteJSON(buffer[x:x + 200], destinationFilePath)
 
 # Process all .wav files into spectrograms from a folder
 def processFolder(sampleRate: int, path: str, negative: bool, debug: bool, overWrite: bool):
@@ -338,7 +307,7 @@ def convertAI(input_path='./AI_PAGD'):
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    processOurData(8000, "./data/Negative_Sounds_Own_Recordings", False)
+    
     # processFolder(8000, "./data/Gunshot_Sounds/Samsung_Edge_S7", False, False, False)
     # Train a model ( Actual training methods are yet to be implemented )
     #trainModel("./trainingDataPos8khz", "./trainingDataNeg8khz", "")
@@ -355,5 +324,5 @@ if __name__ == '__main__':
     # Train a model ( Actual training methods are yet to be implemented )
     #trainModel(modelPath="TEST.py")
     
-    convertAI()
+    #convertAI()
     pass

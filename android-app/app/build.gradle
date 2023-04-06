@@ -2,17 +2,14 @@ plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
     id 'com.google.android.libraries.mapsplatform.secrets-gradle-plugin'
-    id 'kotlin-kapt'
-    id 'dagger.hilt.android.plugin'
 }
 
 android {
-    namespace 'com.example.pagdapp'
+    namespace 'com.example.testapp'
     compileSdk 33
 
-
     defaultConfig {
-        applicationId "com.example.pagdapp"
+        applicationId "com.example.testapp"
         minSdk 24
         targetSdk 33
         versionCode 1
@@ -20,19 +17,13 @@ android {
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
-    buildFeatures {
-        viewBinding = true
-    }
 
     buildTypes {
-
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
-    ndkVersion '25.2.9519653'
-
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
@@ -42,44 +33,23 @@ android {
     }
     buildFeatures {
         viewBinding true
-        mlModelBinding true
     }
-
-
-}
-
-kapt {
-    correctErrorTypes = true
 }
 
 dependencies {
 
-    //   implementation('com.squareup.okhttp3:okhhtp:4,9.0')
+  //   implementation('com.squareup.okhttp3:okhhtp:4,9.0')
 
-    implementation('io.socket:socket.io-client:2.1.0') {
+    implementation('io.socket:socket.io-client:2.0.0') {
         exclude group: 'org.json', module: 'json'
     }
     implementation 'androidx.core:core-ktx:1.9.0'
     implementation 'com.google.android.gms:play-services-location:21.0.1'
-    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'androidx.appcompat:appcompat:1.6.0'
     implementation 'com.google.android.material:material:1.8.0'
     implementation 'com.google.android.gms:play-services-maps:18.1.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
-    implementation 'androidx.navigation:navigation-fragment-ktx:2.5.3'
-    implementation 'androidx.navigation:navigation-ui-ktx:2.5.3'
-    implementation 'androidx.lifecycle:lifecycle-livedata-ktx:2.6.1'
-    implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.1'
-    implementation 'androidx.legacy:legacy-support-v4:1.0.0'
-    implementation "androidx.activity:activity-ktx:1.7.0"
-    implementation "androidx.fragment:fragment-ktx:1.5.6"
-
-
-    implementation 'com.google.android.material:material:1.9.0-beta01'
-    implementation "com.google.android.material:material:1.8.0"
-    implementation 'androidx.preference:preference:1.2.0'
-    implementation 'androidx.recyclerview:recyclerview:1.3.0'
-
-
+    testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
     // retrofit
@@ -90,41 +60,11 @@ dependencies {
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4'
 
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4'
-    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.6.1'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.5.1'
 
-    implementation "androidx.lifecycle:lifecycle-viewmodel-compose:2.6.1"
-
-    implementation 'com.github.squti:Android-Wave-Recorder:1.7.0'
-
-    // Tensorflow
-    implementation 'org.tensorflow:tensorflow-lite:2.8.0'
-    //   implementation 'org.tensorflow:tensorflow-lite-support:0.2.0'
-    implementation 'org.tensorflow:tensorflow-lite-metadata:0.1.0'
-    implementation 'org.tensorflow:tensorflow-lite-gpu:2.5.0'
-
-
-    // Import the Audio Task Library dependency (NNAPI is included)
-    implementation 'org.tensorflow:tensorflow-lite-task-audio:0.4.0'
-    // Import the GPU delegate plugin Library for GPU inference
-    implementation 'org.tensorflow:tensorflow-lite-gpu-delegate-plugin:0.4.0'
-
-    //Testing
-    testImplementation 'io.mockk:mockk:1.12.0'
-    testImplementation "io.mockk:mockk-android:1.12.0"
-    testImplementation "io.mockk:mockk-agent:1.12.0"
-
-
-    //Dagger - Hilt
-    implementation("com.google.dagger:hilt-android:2.44")
-    kapt("com.google.dagger:hilt-android-compiler:2.44")
-
-
-    implementation "androidx.test:core:1.5.0"
-    testImplementation "junit:junit:4.13.2"
-    testImplementation "org.hamcrest:hamcrest-all:1.3"
-    testImplementation "androidx.arch.core:core-testing:2.2.0"
-    testImplementation "org.jetbrains.kotlinx:kotlinx-coroutines-test:1.6.4"
-    testImplementation "com.google.truth:truth:1.0.1"
-
-
+    // Tensorflow Lite dependencies
+    implementation 'org.tensorflow:tensorflow-lite-task-vision-play-services:0.4.2'
+    implementation 'com.google.android.gms:play-services-tflite-gpu:16.1.0'
+    // Dependency for comirva
+    implementation 'javax.xml.stream:stax-api:1.0-2'
 }

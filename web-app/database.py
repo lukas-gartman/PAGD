@@ -45,46 +45,19 @@ class Database:
 
     def execute(self, query, values = None):
         """Execute an SQL query
-        @param query (string): the SQL query to be executed. Use %s for parameters
-        @param values (tuple, optional): the parameter values for each %s in the query
-        @return list: the query result
+        @param query string: the SQL query to be executed. Use %s for parameters
+        @param values tuple: the parameter values for each %s in the query
+        @return 
         """
         if not self._is_connected():
             print("MySQL server has gone away. Reconnecting...")
             self._connect()
         
         self.cursor.execute(query, values)
-        r = self.cursor.fetchall()
-        result = r if len(r) > 0 else []
+        result = self.cursor.fetchall()
         self.conn.commit()
 
         return result
-    
-    def execute_transaction(self, queries, values = None):
-        """Execute multiple SQL queries as a transaction
-        @param queries (list[string]): the SQL queries to be executed
-        @param values (list[tuple], optional): the parameters in order of queries
-        @return list[list]: the query result
-        """
-        if not self._is_connected():
-            print("MySQL server has gone away. Reconnecting...")
-            self._connect()
-        
-        result = []
-        for q, v in zip(queries, values):
-            try:
-                self.cursor.execute(q, v)
-                r = self.cursor.fetchall()
-                result.append(r if len(r) > 0 else [])
-            except Exception as e:
-                print("Error occurred, rolling back database...", str(e), sep="\n\t")
-                self.conn.rollback()
-                return []
-
-        self.conn.commit()
-
-        return result
-
     
     def to_json(self, rows, default = None):
         """Convert database results to a JSON object
@@ -97,11 +70,8 @@ class Database:
         for row in rows:
             row_dict = {}
             for i in range(len(row)):
-                try:
-                    # get the name of the column and set its value in the dictionary
-                    row_dict[self.cursor.description[i][0]] = row[i]
-                except IndexError:
-                    pass
+                # get the name of the column and set its value in the dictionary
+                row_dict[self.cursor.description[i][0]] = row[i]
             row_dicts.append(row_dict)
         json_str = json.dumps(row_dicts, default=default)
 

@@ -13,7 +13,7 @@ def tensorReadJSON(path):
 
 
 # Load the TFLite model and allocate tensors.
-interpreter = tf.lite.Interpreter(model_path="model.tflite2")
+interpreter = tf.lite.Interpreter(model_path="model.tflite")
 interpreter.allocate_tensors()
 
 # Get input and output tensors.
@@ -26,7 +26,7 @@ result = []
 def test():
     posFilesPath = os.listdir('./testdata')
     # Define a test input.
-    for i in range(10):
+    for i in range(1):
         test_input = tensorReadJSON(positivePath + '/' + posFilesPath[i])
         for j in range(len(test_input)):
             test = tf.expand_dims(test_input[j], axis=0)
