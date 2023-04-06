@@ -1,0 +1,30 @@
+import tensorflow as tf
+
+# model that use batchNormalization, MaxPooling, Dropout and some deeper layers
+
+model = tf.keras.Sequential([
+    tf.keras.layers.Conv2D(32, (3, 3), activation='relu',
+                           input_shape=(256, 257, 1)),
+    tf.keras.layers.BatchNormalization(),
+    tf.keras.layers.MaxPooling2D((2, 2)),
+    tf.keras.layers.Dropout(0.2),
+    tf.keras.layers.Conv2D(64, (3, 3), activation='relu'),
+    tf.keras.layers.BatchNormalization(),
+    tf.keras.layers.MaxPooling2D((2, 2)),
+    tf.keras.layers.Dropout(0.2),
+    tf.keras.layers.Conv2D(128, (3, 3), activation='relu'),
+    tf.keras.layers.BatchNormalization(),
+    tf.keras.layers.MaxPooling2D((2, 2)),
+    tf.keras.layers.Dropout(0.2),
+    tf.keras.layers.Flatten(),
+    tf.keras.layers.Dense(128, activation='relu'),
+    tf.keras.layers.BatchNormalization(),
+    tf.keras.layers.Dropout(0.2),
+    tf.keras.layers.Dense(1, activation='sigmoid')
+])
+
+
+model.compile(optimizer='adam',
+              loss='binary_crossentropy',
+              metrics=['accuracy', tf.keras.metrics.Recall(), tf.keras.metrics.Precision()])
+model.summary()

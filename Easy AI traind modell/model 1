@@ -1,0 +1,27 @@
+import tensorflow as tf
+
+# improving the model by adding Batch Normalization
+
+# Batch Normalization is a technique used to normalize
+# the inputs of a neural network layer, which helps to improve
+# its stability and training speed. It reduces internal covariate
+# shift by normalizing the output of each layer and can improve
+# the generalization of the network by reducing overfitting.
+
+model = tf.keras.Sequential([
+    tf.keras.layers.Conv2D(16, (3, 3), activation='relu',
+                           input_shape=(256, 257, 1)),
+    tf.keras.layers.BatchNormalization(),
+    tf.keras.layers.Conv2D(32, (3, 3), activation='relu'),
+    tf.keras.layers.BatchNormalization(),
+    tf.keras.layers.Flatten(),
+    tf.keras.layers.Dense(128, activation='relu'),
+    tf.keras.layers.BatchNormalization(),
+    tf.keras.layers.Dense(1, activation='sigmoid')
+])
+
+model.compile(optimizer=tf.keras.optimizers.Adam(lr=0.0001),
+              loss='binary_crossentropy',
+              metrics=[tf.keras.metrics.Recall(), tf.keras.metrics.Precision()])
+
+model.summary()

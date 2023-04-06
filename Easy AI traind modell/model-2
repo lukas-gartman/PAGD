@@ -1,0 +1,30 @@
+import tensorflow as tf
+
+# improving the model by using a Dropout layers
+
+# Dropout is a regularization technique used to prevent overfitting
+# in neural networks. It randomly drops out (sets to zero) a proportion
+# of neurons during training, forcing the network to learn more robust
+# features that generalize better to new data.
+
+model = tf.keras.Sequential([
+    tf.keras.layers.Conv2D(16, (3, 3), activation='relu',
+                           input_shape=(256, 257, 1)),
+    tf.keras.layers.Dropout(0.2),  # dropout layer that randomly
+    # sets 20% (0.2) of the input units
+    # to 0 during training time. This
+    # means that duringeach training iteration
+    # 20% of the neurons in the layer will be randomly ignored
+    tf.keras.layers.Conv2D(32, (3, 3), activation='relu'),
+    tf.keras.layers.Dropout(0.2),
+    tf.keras.layers.Flatten(),
+    tf.keras.layers.Dense(128, activation='relu'),
+    tf.keras.layers.Dropout(0.2),
+    tf.keras.layers.Dense(1, activation='sigmoid')
+])
+
+model.compile(optimizer=tf.keras.optimizers.Adam(lr=0.0001),
+              loss='binary_crossentropy',
+              metrics=[tf.keras.metrics.Recall(), tf.keras.metrics.Precision()])
+
+model.summary()
