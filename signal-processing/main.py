@@ -5,11 +5,9 @@ from matplotlib import pyplot as plt
 import tensorflow as tf
 import json
 from model import *
-
-
-POS = './data/Gunshot_Sounds'
-DEMO_FILE = '/Samsung_Edge_S7/BoltAction22_Samsung/SA_004B_S02.wav'
-PARENT_DIR = './data/Gunshot_Sounds/Samsung_Edge_S7/Glock45_Samsung'
+import librosa
+import random
+import matplotlib.pyplot as plot
 
 # Visualize the wave
 def plotWave(wave, sampleRate):
@@ -46,11 +44,17 @@ def plotSpectrogramSimple(spectrogram):
 
 
 # Load an audio file into 16khz format
-def load_wav_16k_mono(fileName):
-    sampleRate, wav = read(fileName)  # Read file and get sample rate and audio data
+def load_wav_16k_mono(filePath):
+    sampleRate, wav = read(filePath)  # Read file and get sample rate and audio data
     if wav.ndim == 1:  # Check if audio data is mono
         wav = np.stack((wav, wav), axis=-1)  # Convert mono to stereo
     wav_16k = []
+
+    # Downsample 44.1khz with librosa
+    if sampleRate == 44100:
+        wav_8k, ignored = librosa.load(filePath, sr=16000)
+        return np.array(wav_16k)
+
     # Select downsampling factor
     if sampleRate == 48000:
         downsampleFac = 3
@@ -61,17 +65,23 @@ def load_wav_16k_mono(fileName):
     else:
         raise Exception("Sample rate not meeting the expected possible sample rates: ", sampleRate)
     for el in wav[::downsampleFac]:
-            wav_16k.append(el[0])
+        wav_16k.append(el[0])
     np.array(wav_16k)
     return wav_16k
 
 
 # Load an audio file into 8khz format
-def load_wav_8k_mono(fileName):
-    sampleRate, wav = read(fileName)  # Read file and get sample rate and audio data
+def load_wav_8k_mono(filePath):
+    sampleRate, wav = read(filePath)  # Read file and get sample rate and audio data
     if wav.ndim == 1:  # Check if audio data is mono
         wav = np.stack((wav, wav), axis=-1)  # Convert mono to stereo
     wav_8k = []
+
+    # Downsample 44.1khz with librosa
+    if sampleRate == 44100:
+        wav_8k, ignored = librosa.load(filePath, sr=8000)
+        return np.array(wav_8k)
+
     # Select downsampling factor
     if sampleRate == 48000:
         downsampleFac = 6
@@ -85,7 +95,7 @@ def load_wav_8k_mono(fileName):
         raise Exception("Sample rate not meeting the expected possible sample rates: ", sampleRate)
     # Downsample to 8khz
     for el in wav[::downsampleFac]:
-            wav_8k.append(el[0])
+        wav_8k.append(el[0])
     np.array(wav_8k)
     return wav_8k
 
@@ -175,6 +185,7 @@ def tensorWriteJSON(data, path):
 
 # Read a json file as a tensor list of spectrograms
 def tensorReadJSON(path):
+    print(path)
     f = open(path, 'r')
     data = json.load(f)  # Parse data
     f.close()
@@ -192,6 +203,40 @@ def getWeaponType(fileName):
             break
         weaponType += char
     return weaponType
+
+
+# Process all .wav files into spectrograms from long files with negative data
+def processOurData(sampleRate: int, path: str, overWrite:bool):
+    filePaths = os.listdir(path)
+    for i in range(len(filePaths)):
+        filepath = path + "/" + filePaths[i]  # Complete path to file
+        fileName = filePaths[i]  # Name of the .wav file in the folder
+        wave = getWave(filepath, sampleRate)  # Load file and get wave
+        buffer = []
+
+        if sampleRate == 8000:
+            step = 16384  # 2 seconds 8khz
+            destinationFolder = "./trainingDataNeg8khz"
+        else:
+            step = 32768  # 2 seconds 16khz
+            destinationFolder = "./trainingDataNeg16khz"
+        for i in range(0, len(wave), step):
+            x = i
+            buffer.append(wave[x:x + step])
+        for i in range(len(buffer)):
+            #wave = buffer[i]  # Demo
+            buffer[i] = preProcessWave(buffer[i], sampleRate)
+            buffer[i] = getSpectrogram(buffer[i])  # Obtain the spectrogram
+            #plotSpectrogram(buffer[i], wave, sampleRate)  # Demo
+        index = 0
+        for i in range(0, len(buffer), 120):
+            x = i
+            destinationFilePath = destinationFolder + '/' + fileName[:-4] + str(index) + '.json'  # File written to
+            index += 1
+            if os.path.isfile(destinationFilePath) and not overWrite:
+                continue
+            tensorWriteJSON(buffer[x:x + 120], destinationFilePath)
+
 
 
 # Process all .wav files into spectrograms from a folder
@@ -255,45 +300,55 @@ def safeTensorConcatenate(dataset1, dataset2):
 def trainModel(positivePath="./trainingDataPos8khz", negativePath="./trainingDataNeg8khz", modelPath=""):
     posFilesPath = os.listdir(positivePath)
     negFilesPath = os.listdir(negativePath)
-    batchSize = 1  # higher values increases randomness of weapon types as well as pos and negative data
-    posIndex = 0  # File index in positive training data folder
-    negIndex = 0  # File index in negative training data folder
+    batchSize = 8  # higher values increases randomness of weapon types as well as pos and negative data
+    paths = []
+    for el in posFilesPath:
+        paths.append((el, 1))
+    for el in negFilesPath:
+        paths.append((el,0))
+    random.shuffle(paths)
 
-    # Train model in batches
-    while posIndex < len(posFilesPath) or negIndex < len(negFilesPath):
-        posData = None
-        negData = None
+    testData = None
+
+    for index in np.arange(0,len(paths),batchSize):
+        data = None
         for i in range(batchSize):
-            # Collect positive data
-            if posIndex < len(posFilesPath):
-                file = tensorReadJSON(positivePath + '/' + posFilesPath[posIndex])
+            if index + i >= len(paths):
+                break
+            path = paths[index + i][0]
+            label = paths[index + i][1]
+            if label == 1:
+                file = tensorReadJSON(positivePath + '/' + path)
                 file = tf.data.Dataset.zip((file, tf.data.Dataset.from_tensor_slices(tf.ones(len(file)))))
-                if i == 0:  # Initialize as tensorflow dataset
-                    posData = file
-                else:
-                    posData.concatenate(file)
-                posIndex += 1
-            # Collect negative data
-            if negIndex < len(negFilesPath):
-                file = tensorReadJSON(negativePath + '/' + negFilesPath[negIndex])
+            else:
+
+                file = tensorReadJSON(negativePath + '/' + path)
                 file = tf.data.Dataset.zip((file, tf.data.Dataset.from_tensor_slices(tf.zeros(len(file)))))
-                if i == 0:  # Initialize as tensorflow dataset
-                    negData = file
-                else:
-                    negData.concatenate(file)
-                negIndex += 1
-        data = safeTensorConcatenate(posData, negData)
-        train_len = int(len(data) * 0.7)
+            data = safeTensorConcatenate(data, file)
+
+
+
+        # New above
+        train_len = int(len(data) * 0.1)
         data = data.cache()
         # Adjust these values to your liking (Use len(data))
-        data = data.shuffle(buffer_size=500)
+        data = data.shuffle(buffer_size=int(len(data)))
         data = data.batch(40)
         data = data.prefetch(20)
-        train = data.take(int(train_len))
-        test = data.skip(int(train_len)).take(int(len(data)) - train_len)
-        samples, labels = train.as_numpy_iterator().next()
-        model.fit(train, epochs=1, validation_data=test)
+        train = data.take(train_len)
+        testData = safeTensorConcatenate(testData, data.skip(train_len).take(int(len(data) * 0.1)))
+        model.fit(train, epochs=1)
     model.save("AI_PAGD")
+
+    '''history = model.evaluate(testData)
+    
+    plot.subplot(2, 1, 1)
+    plot.plot(history.history['acc'])
+    plot.plot(history.history['val_acc'])
+    plot.title('model accuracy')
+    plot.ylabel('accuracy')
+    plot.xlabel('epoch')
+    plot.legend(['train', 'test'], loc='lower right')'''
 
 
 def convertAI(input_path='./AI_PAGD'):
@@ -305,24 +360,26 @@ def convertAI(input_path='./AI_PAGD'):
         f.write(tflite_model)
     f.close()
 
+
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    
-    # processFolder(8000, "./data/Gunshot_Sounds/Samsung_Edge_S7", False, False, False)
+    #processOurData(8000, "./data/Negative_Data/Own_Recordings", False)
+    #processFolder(8000, "./data/Negative_Data/Collected_data", True, False, False)
     # Train a model ( Actual training methods are yet to be implemented )
-    #trainModel("./trainingDataPos8khz", "./trainingDataNeg8khz", "")
+    trainModel("./trainingDataPos8khz", "./trainingDataNeg8khz", "")
     # trainModel("./trainingDataPos8khz", "./trainingDataNeg8khz", "")
 
     # Generate positive training data that picks up where you left off
-    #processFolder(8000, "./data/Gunshot_Sounds/Iphone_7", False, False, False)
-    #./data/Gunshot_Sounds/Samsung_Edge_S7
-    #./data/Gunshot_Sounds_Own_Recordings/Samsung_Edge_S6
-    #./data/Gunshot_Sounds_Own_Recordings/Samsung_Galaxy_S20
+    # processFolder(8000, "./data/Gunshot_Sounds/Iphone_7", False, False, False)
+    # ./data/Gunshot_Sounds/Samsung_Edge_S7
+    # ./data/Gunshot_Sounds_Own_Recordings/Samsung_Edge_S6
+    # ./data/Gunshot_Sounds_Own_Recordings/Samsung_Galaxy_S20
     # ./data/Gunshot_Sounds/Iphone_7
+    # ./data/Gunshot_Sounds/Zoom_H4N_Handheld_Recording_Device
     # Generate negative training data that picks up where you left off
-    #processFolder(8000, "./data/Gunshot_Sounds_Own_Recordings/Samsung_Galaxy_S20", False, False, False)
+    # processFolder(8000, "./data/Gunshot_Sounds_Own_Recordings/Samsung_Galaxy_S20", False, False, False)
     # Train a model ( Actual training methods are yet to be implemented )
-    #trainModel(modelPath="TEST.py")
-    
-    #convertAI()
+    # trainModel(modelPath="TEST.py")
+
+    # convertAI()
     pass
