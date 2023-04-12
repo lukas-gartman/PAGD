@@ -78,7 +78,7 @@ class MainActivity : AppCompatActivity() {
         val fileChannel2 = inputStream2.channel;
         val startOffset2 = fileDescriptor2.startOffset;
         val declaredLength2 = fileDescriptor2.declaredLength;
-        val filemap2 =  fileChannel2.map(FileChannel2.MapMode.READ_ONLY, startOffset2, declaredLength2);
+        val filemap2 =  fileChannel2.map(FileChannel.MapMode.READ_ONLY, startOffset2, declaredLength2);
 
         val model_interpreter = Interpreter(filemap2)
 
