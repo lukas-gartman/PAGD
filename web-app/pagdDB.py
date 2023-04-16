@@ -1,9 +1,10 @@
 import sys
 from database import Database
+from pagdDB_interface import PagdDBInterface
 # import secrets
 # import hashlib
 
-class PagdDB(Database):
+class PagdDB(Database, PagdDBInterface):
     def __init__(self, user, password):
         try:
             super().__init__("tottes.net", 3306, user, password, "pagd")
@@ -43,13 +44,8 @@ class PagdDB(Database):
         @param gun (string): the name of the gun
         @return (json): a JSON object with the newly added report
         """
-        if coord_alt:
-            query = "INSERT INTO Reports (timestamp, coord_lat, coord_long, coord_alt, gun) VALUES (FROM_UNIXTIME(%s), %s, %s, %s, %s) RETURNING *;"
-            result = self.execute(query, (timestamp / 1000, coord_lat, coord_long, coord_alt, gun))
-        else:
-            query = "INSERT INTO Reports (timestamp, coord_lat, coord_long, gun) VALUES (FROM_UNIXTIME(%s), %s, %s, %s) RETURNING *;"
-            result = self.execute(query, (timestamp / 1000, coord_lat, coord_long, gun))
-
+        query = "INSERT INTO Reports (timestamp, coord_lat, coord_long, coord_alt, gun) VALUES (%s, %s, %s, %s, %s) RETURNING *;"
+        result = self.execute(query, (timestamp, coord_lat, coord_long, coord_alt, gun))
         return self.to_json(result, default=str)
 
     def get_report(self, report_id):
@@ -57,12 +53,11 @@ class PagdDB(Database):
         @param report_id (int): the report ID
         @return (json): a JSON object with the result
         """
-        # queries select the UNIX timestamp in a millisecond format (*1000) and sends data in seconds (/1000)
         if report_id is not None:
-            query = "SELECT report_id, (SELECT ROUND(UNIX_TIMESTAMP(timestamp) * 1000)) AS timestamp, coord_lat, coord_long, coord_alt, gun FROM Reports WHERE report_id = %s;"
+            query = "SELECT * FROM Reports WHERE report_id = %s;"
             result = self.execute(query, (report_id,)) # must create a tuple
         else:
-            query = "SELECT report_id, (SELECT ROUND(UNIX_TIMESTAMP(timestamp) * 1000)) AS timestamp, coord_lat, coord_long, coord_alt, gun FROM Reports;"
+            query = "SELECT * FROM Reports;"
             result = self.execute(query)
 
         return self.to_json(result, default=int)
@@ -73,15 +68,14 @@ class PagdDB(Database):
         @param time_to (int): UNIX timestamp of the beginning of the range
         @return (json): a JSON object with the result
         """
-        # queries select the UNIX timestamp in a millisecond format (*1000) and sends data in seconds (/1000)
-        query = "SELECT report_id, (SELECT ROUND(UNIX_TIMESTAMP(timestamp) * 1000)) AS timestamp, coord_lat, coord_long, coord_alt, gun FROM Reports WHERE timestamp >= FROM_UNIXTIME(%s) AND timestamp < FROM_UNIXTIME(%s);"
-        result = self.execute(query, (time_from / 1000, time_to / 1000))
+        query = "SELECT * FROM Reports WHERE timestamp >= %s AND timestamp < %s;"
+        result = self.execute(query, (time_from, time_to))
         return self.to_json(result, default=int)
 
-    def add_gunshot(self, gunshot_id, report, timestamp, coord_lat, coord_long, coord_alt, gun, shots_fired):
+    def add_gunshot(self, gunshot_id, report_id, timestamp, coord_lat, coord_long, coord_alt, gun, shots_fired):
         """Add record of a determined gunshot event based on the given report
         @param gunshot_id (int): the gunshot ID
-        @param report (int): the report ID which the determined gunshot is based on
+        @param report_id (int): the report ID which the determined gunshot is based on
         @param timestamp (int): determined UNIX timestamp of the gunshot
         @param coord_lat (float): the latitude coordinate
         @param coord_long (float): the longitude coordinate
@@ -90,46 +84,86 @@ class PagdDB(Database):
         @param shots_fired (int): the number of shots that were fired in this event
         @return json: a JSON object with the inserted value
         """
-        if coord_alt:
-            query = "INSERT INTO GunshotEvents (gunshot_id, report, timestamp, coord_lat, coord_long, coord_alt, gun, shots_fired) VALUES (%s, %s, FROM_UNIXTIME(%s), %s, %s, %s, %s, %s) RETURNING *;"
-            result = self.execute(query, (gunshot_id, report, timestamp / 1000, coord_lat, coord_long, coord_alt, gun, shots_fired))
-        else:
-            query = "INSERT INTO GunshotEvents (gunshot_id, report, timestamp, coord_lat, coord_long, gun, shots_fired) VALUES (%s, %s, FROM_UNIXTIME(%s), %s, %s, %s, %s) RETURNING *;"
-            result = self.execute(query, (gunshot_id, report, timestamp / 1000, coord_lat, coord_long, gun, shots_fired))
+        queries = []
+        values  = []
+
+        # Add the gunshot and update if it already exists
+        queries.append("""INSERT INTO Gunshots VALUES (%s, %s, %s, %s, %s, %s, %s) ON DUPLICATE KEY UPDATE
+            timestamp = VALUES(timestamp), coord_lat = VALUES(coord_lat), coord_long = VALUES(coord_long), coord_alt = VALUES(coord_alt),
+            gun = VALUES(gun), shots_fired = VALUES(shots_fired)
+            RETURNING *;""")
+        values.append((gunshot_id, timestamp, coord_lat, coord_long, coord_alt, gun, shots_fired))
         
-        return self.to_json(result, default=str)
+        # Add the relation
+        queries.append("INSERT INTO GunshotReports VALUES (%s, %s) RETURNING *;")
+        values.append((gunshot_id, report_id))
+
+        result = self.execute_transaction(queries, values)
+        if result:
+            return self.to_json(result[0], default=str)
+        else:
+            return None
     
-    def add_temp_gunshot(self, gunshot_id, report, gun):
+    def add_temp_gunshot(self, gunshot_id, report_id, gun):
         """Add a temporary placeholder record for a gunshot event. This record will later be updated when there are more reports to process.
         @param gunshot_id (int): the gunshot ID
-        @param report (int): the report ID
+        @param report_id (int): the report ID
         @param gun (string): the name of the gun
         @return json: a JSON object with the inserted value
         """
-        query = "INSERT INTO GunshotEvents (gunshot_id, report, gun) VALUES (%s, %s, %s) RETURNING *;"
-        result = self.execute(query, (gunshot_id, report, gun))
-        return self.to_json(result, default=str)
+        queries = []
+        values  = []
+
+        # Add the gunshot
+        queries.append("INSERT INTO Gunshots (gunshot_id, gun) VALUES (%s, %s) ON DUPLICATE KEY UPDATE gun = VALUES(gun) RETURNING *;")
+        values.append((gunshot_id, gun))
+        
+        # Add the relation
+        queries.append("INSERT INTO GunshotReports VALUES (%s, %s) RETURNING *;")
+        values.append((gunshot_id, report_id))
+
+        result = self.execute_transaction(queries, values)
+        return self.to_json(result[0], default=str)
     
-    def update_gunshot(self, gunshot_id, timestamp, coord_lat, coord_long, coord_alt, shots_fired):
+    def add_gunshot_report_relation(self, gunshot_id, report_id):
+        """Add a gunshot report relation
+        @param gunshot_id (int): the gunshot ID
+        @param report_id (int): the report ID
+        @return json: a JSON object with the inserted value
+        """
+        query = "INSERT INTO GunshotReports VALUES (%s, %s) RETURNING *;"
+        result = self.execute(query, (gunshot_id, report_id))
+        return self.to_json(result)
+    
+    def update_gunshot(self, gunshot_id, timestamp, coord_lat, coord_long, coord_alt, gun, shots_fired):
         """Update the data of the gunshot with the given ID
         @param gunshot_id (int): the gunshot ID
         @param timestamp (int): determined UNIX timestamp of the gunshot
         @param coord_lat (float): the latitude coordinate
         @param coord_long (float): the longitude coordinate
         @param coord_alt (float): the altitude coordinate
+        @param gun (string): the name of the gun
         @param shots_fired (int): the number of shots that were fired in this event
         @return json: a JSON object with the inserted value
         """
-        query = "UPDATE GunshotEvents SET (timestamp = %s, coord_lat = %s, coord_long = %s, coord_alt = %s, shots_fired = %s) WHERE gunshot_id = %s;"
-        result = self.execute(query, (timestamp, coord_lat, coord_long, coord_alt, shots_fired, gunshot_id))
-        return self.to_json(result, default=str)
+        queries = []
+        values = []
+        
+        queries.append("UPDATE Gunshots SET timestamp = %s, coord_lat = %s, coord_long = %s, coord_alt = %s, gun = %s, shots_fired = %s WHERE gunshot_id = %s;")
+        values.append((timestamp, coord_lat, coord_long, coord_alt, gun, shots_fired, gunshot_id))
+        
+        queries.append("SELECT * FROM Gunshots WHERE gunshot_id = %s;") # RETURNING * is not supported for UPDATE queries, therefore you must select
+        values.append((gunshot_id,))
+
+        result = self.execute_transaction(queries, values)
+        return self.to_json(result[1], default=str)
     
     def get_gunshot_by_id(self, gunshot_id):
         """Search for gunshots based on time or location (or both)
         @param gunshot_id (int): the gunshot ID
         @return (json): a JSON object with the result
         """
-        query = "SELECT (SELECT ROUND(UNIX_TIMESTAMP(timestamp) * 1000)) AS timestamp, coord_lat, coord_long, coord_alt, gun, shots_fired FROM GunshotEvents WHERE gunshot_id = %s LIMIT 1;"
+        query = "SELECT * FROM Gunshots WHERE gunshot_id = %s;"
         result = self.execute(query, (gunshot_id,)) # must create a tuple
         return self.to_json(result, default=int)
     
@@ -139,16 +173,15 @@ class PagdDB(Database):
         @param time_to (int):   UNIX timestamp of the start of the range
         @return (json): a JSON object with the result
         """
-        # queries select the UNIX timestamp in a millisecond format (*1000) and sends data in seconds (/1000)
-        query = "SELECT (SELECT ROUND(UNIX_TIMESTAMP(timestamp) * 1000)) AS timestamp, coord_lat, coord_long, coord_alt, gun, shots_fired FROM GunshotEvents WHERE timestamp >= FROM_UNIXTIME(%s) AND timestamp < FROM_UNIXTIME(%s);"
-        result = self.execute(query, (time_from / 1000, time_to / 1000))
+        query = "SELECT * FROM Gunshots WHERE timestamp >= %s AND timestamp < %s;"
+        result = self.execute(query, (time_from, time_to))
         return self.to_json(result, default=int)
     
     def get_all_gunshots(self):
         """Retrieve all gunshots
         @return (json): a JSON object with the result
         """
-        query = "SELECT gunshot_id, (SELECT ROUND(UNIX_TIMESTAMP(timestamp) * 1000)) AS timestamp, coord_lat, coord_long, coord_alt, gun, shots_fired FROM GunshotEvents;"
+        query = "SELECT * FROM Gunshots;"
         result = self.execute(query)
         return self.to_json(result, default=int)
 
@@ -158,5 +191,8 @@ class PagdDB(Database):
         """Get the most recent gunshot ID
         @return (int): the most recent gunshot ID
         """
-        query = "SELECT MAX(gunshot_id) FROM GunshotEvents;"
-        return self.execute(query)
+        query = "SELECT MAX(gunshot_id) AS gunshot_id FROM Gunshots;"
+        result = self.execute(query)
+        if result is not None:
+            return result[0][0]
+        # return self.to_json(result, default=int)
