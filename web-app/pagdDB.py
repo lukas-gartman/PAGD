@@ -1,8 +1,6 @@
 import sys
 from database import Database
 from pagdDB_interface import PagdDBInterface
-# import secrets
-# import hashlib
 
 class PagdDB(Database, PagdDBInterface):
     def __init__(self, user, password):
@@ -19,7 +17,11 @@ class PagdDB(Database, PagdDBInterface):
         @return (json): a JSON object with the newly added gun
         """
         query = "INSERT INTO Guns VALUES (%s, %s) RETURNING *;"
-        result = self.execute(query, (gun_name, gun_type))
+        try:
+            result = self.execute(query, (gun_name, gun_type))
+        except:
+            return None
+        
         return self.to_json(result)
 
     def get_gun(self, gun_name):
@@ -45,7 +47,10 @@ class PagdDB(Database, PagdDBInterface):
         @return (json): a JSON object with the newly added report
         """
         query = "INSERT INTO Reports (timestamp, coord_lat, coord_long, coord_alt, gun) VALUES (%s, %s, %s, %s, %s) RETURNING *;"
-        result = self.execute(query, (timestamp, coord_lat, coord_long, coord_alt, gun))
+        try:
+            result = self.execute(query, (timestamp, coord_lat, coord_long, coord_alt, gun))
+        except:
+            return None
         return self.to_json(result, default=str)
 
     def get_report(self, report_id):
@@ -98,11 +103,12 @@ class PagdDB(Database, PagdDBInterface):
         queries.append("INSERT INTO GunshotReports VALUES (%s, %s) RETURNING *;")
         values.append((gunshot_id, report_id))
 
-        result = self.execute_transaction(queries, values)
-        if result:
-            return self.to_json(result[0], default=str)
-        else:
+        try:
+            result = self.execute_transaction(queries, values)
+        except:
             return None
+        return self.to_json(result[0], default=str) or None
+        
     
     def add_temp_gunshot(self, gunshot_id, report_id, gun):
         """Add a temporary placeholder record for a gunshot event. This record will later be updated when there are more reports to process.
@@ -122,8 +128,11 @@ class PagdDB(Database, PagdDBInterface):
         queries.append("INSERT INTO GunshotReports VALUES (%s, %s) RETURNING *;")
         values.append((gunshot_id, report_id))
 
-        result = self.execute_transaction(queries, values)
-        return self.to_json(result[0], default=str)
+        try:
+            result = self.execute_transaction(queries, values)
+        except:
+            return None
+        return self.to_json(result[0], default=str) or None
     
     def add_gunshot_report_relation(self, gunshot_id, report_id):
         """Add a gunshot report relation
@@ -132,7 +141,10 @@ class PagdDB(Database, PagdDBInterface):
         @return json: a JSON object with the inserted value
         """
         query = "INSERT INTO GunshotReports VALUES (%s, %s) RETURNING *;"
-        result = self.execute(query, (gunshot_id, report_id))
+        try:
+            result = self.execute(query, (gunshot_id, report_id))
+        except:
+            return None
         return self.to_json(result)
     
     def update_gunshot(self, gunshot_id, timestamp, coord_lat, coord_long, coord_alt, gun, shots_fired):
@@ -155,8 +167,11 @@ class PagdDB(Database, PagdDBInterface):
         queries.append("SELECT * FROM Gunshots WHERE gunshot_id = %s;") # RETURNING * is not supported for UPDATE queries, therefore you must select
         values.append((gunshot_id,))
 
-        result = self.execute_transaction(queries, values)
-        return self.to_json(result[1], default=str)
+        try:
+            result = self.execute_transaction(queries, values)
+        except:
+            return None
+        return self.to_json(result[1], default=str) or None
     
     def get_gunshot_by_id(self, gunshot_id):
         """Search for gunshots based on time or location (or both)

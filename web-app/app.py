@@ -68,11 +68,11 @@ def create_routes(app, db: PagdDBInterface, gunshot_subject: SubjectInterface):
         @return json: a status message
         """
         data = request.get_json()
-        gun_name = data["gun_name"]
-        gun_type = data["gun_type"]
+        gun_name = data.get("gun_name") or abort(400, "required paramter gun_name was not provided")
+        gun_type = data.get("gun_type") or ""
         
-        db.add_gun(gun_name, gun_type)
-        return {"status": "success"}
+        result = db.add_gun(gun_name, gun_type)
+        return result or abort(500, description="Failed to add the gun. Possibly duplicate entry for gun_name.")
 
     @app.route("/api/guns", methods = ["GET"])
     def get_gun():
@@ -96,19 +96,22 @@ def create_routes(app, db: PagdDBInterface, gunshot_subject: SubjectInterface):
         @return (json): a JSON object with the newly added report
         """
         data = request.get_json()
-        timestamp = data["timestamp"]
-        coord_lat = data["coord_lat"]
-        coord_long = data["coord_long"]
-        coord_alt = data["coord_alt"]
-        gun = data["gun"]
+        timestamp = data.get("timestamp")
+        coord_lat = data.get("coord_lat")
+        coord_long = data.get("coord_long")
+        coord_alt = data.get("coord_alt")
+        gun = data.get("gun")
+
+        if None in (timestamp, coord_lat, coord_long, coord_alt, gun):
+            abort(400, "missing required parameters")
 
         result = db.add_report(timestamp, coord_lat, coord_long, coord_alt, gun)
-        report_id = result["report_id"]
+        report_id = data.get("report_id")
         if result is not None:
             report = (report_id, (coord_lat, coord_long, coord_alt), timestamp, gun, g.client_id)
             gunshot_subject.notify(report)
         
-        return result or abort(500, description="Failed to add the report")
+        return result or abort(500, description="Failed to add the report.")
 
     @app.route("/api/reports", methods = ["GET"])
     def get_report():
@@ -142,23 +145,23 @@ def create_routes(app, db: PagdDBInterface, gunshot_subject: SubjectInterface):
         @return json: a JSON object with the inserted value
         """
         data = request.get_json()
-        gunshot_id = data["gunshot_id"]
-        report = data["report"]
-        timestamp = data["timestamp"]
-        coord_lat = data["coord_lat"]
-        coord_long = data["coord_long"]
-        coord_alt = data["coord_alt"]
-        gun = data["gun"]
-        shots_fired = data["shots_fired"]
+        gunshot_id = data.get("gunshot_id")
+        report_id = data.get("report_id")
+        timestamp = data.get("timestamp")
+        coord_lat = data.get("coord_lat")
+        coord_long = data.get("coord_long")
+        coord_alt = data.get("coord_alt")
+        gun = data.get("gun")
+        shots_fired = data.get("shots_fired")
 
-        if None in (gunshot_id, report, gun): # not enough info to add a gunshot
-            result = {"status": "error", "message": "invalid parameters"}
+        if None in (gunshot_id, report_id, gun): # not enough info to add a gunshot
+            abort(400, "missing required parameters")
         elif None in (timestamp, coord_lat, coord_long, coord_alt): # able to add a temporary entry
             result = db.add_temp_gunshot(gunshot_id, report_id, gun)
         else: # able to add a complete gunshot
-            result = db.add_gunshot(gunshot_id, report, timestamp, coord_lat, coord_long, coord_alt, gun, shots_fired)
+            result = db.add_gunshot(gunshot_id, report_id, timestamp, coord_lat, coord_long, coord_alt, gun, shots_fired)
         
-        return result or abort(500, description="Failed to add the gunshot")
+        return result or abort(500, description="Failed to add the gunshot. Possibly duplicate entry for gunshot_id.")
 
     @app.route("/api/gunshots", methods = ["PUT"])
     def update_gunshot():
@@ -172,20 +175,19 @@ def create_routes(app, db: PagdDBInterface, gunshot_subject: SubjectInterface):
         @return json: a status message
         """
         data = request.get_json()
-        gunshot_id = data["gunshot_id"]
-        timestamp = data["timestamp"]
-        coord_lat = data["coord_lat"]
-        coord_long = data["coord_long"]
-        coord_alt = data["coord_alt"]
-        gun = data["gun"]
-        shots_fired = data["shots_fired"]
+        gunshot_id = data.get("gunshot_id")
+        timestamp = data.get("timestamp")
+        coord_lat = data.get("coord_lat")
+        coord_long = data.get("coord_long")
+        coord_alt = data.get("coord_alt")
+        gun = data.get("gun")
+        shots_fired = data.get("shots_fired")
 
         if None in (gunshot_id, timestamp, coord_lat, coord_long, coord_alt, gun, shots_fired): # not enough info to add a gunshot
-            result = {"status": "error", "message": "invalid parameters"}
-        else:
-            result = db.update_gunshot(gunshot_id, timestamp, coord_lat, coord_long, coord_alt, gun, shots_fired)
+            abort(400, "missing required parameters")
         
-        return result or {"status": "success"}
+        result = db.update_gunshot(gunshot_id, timestamp, coord_lat, coord_long, coord_alt, gun, shots_fired)
+        return result or abort(500, description="Failed to update the gunshot.")
 
     @app.route("/api/gunshots", methods = ["GET"])
     def get_gunshot():
