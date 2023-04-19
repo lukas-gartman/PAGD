@@ -1,7 +1,7 @@
 import requests
 
 # token = requests.get("http://localhost:5000/register").json()["token"]
-token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyZWdpc3RyYXRpb24iOjE2Nzk0NDQ5NTQxOTB9.95mAfwlGoMnwcw-zbUnn_l29RiMVjnqrPApnZRLgwLA"
+token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyZWdpc3RyYXRpb24iOjE2ODE5NDQzMjM3ODcsImlkIjoiMWQ2ZGQwNjUtZTU3Ny00NDBiLTk3NWMtNGU5NGIwODFjYjg5IiwiZXhwIjoxNjg0NTM2MzIzNzg3fQ.WZb6iNLkbPmQXr4Yl13lQWFAYzxH5hTegj--eAGYVUk"
 url = "http://localhost:5000/api/reports"
 headers = {"Authorization": token}
 

@@ -5,7 +5,7 @@ from pagdDB_interface import PagdDBInterface
 class PagdDB(Database, PagdDBInterface):
     def __init__(self, user, password):
         try:
-            super().__init__("tottes.net", 3306, user, password, "pagd")
+            super().__init__("localhost", 3306, user, password, "pagd")
         except Exception: # hack-fix... should be done properly
             print("Incorrect password")
             sys.exit(1)
@@ -49,7 +49,7 @@ class PagdDB(Database, PagdDBInterface):
         query = "INSERT INTO Reports (timestamp, coord_lat, coord_long, coord_alt, gun) VALUES (%s, %s, %s, %s, %s) RETURNING *;"
         try:
             result = self.execute(query, (timestamp, coord_lat, coord_long, coord_alt, gun))
-        except:
+        except Exception as e:
             return None
         return self.to_json(result, default=str)
 
@@ -208,6 +208,7 @@ class PagdDB(Database, PagdDBInterface):
         """
         query = "SELECT MAX(gunshot_id) AS gunshot_id FROM Gunshots;"
         result = self.execute(query)
-        if result is not None:
+        if len(result) > 0 and not None in result[0]:
             return result[0][0]
+        return 1
         # return self.to_json(result, default=int)

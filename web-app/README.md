@@ -7,15 +7,15 @@ This API allows you to access various resources through a RESTful interface. It 
 * Python 3.x
 * MariaDB / MySQL
 * Packages:
-    * libmariadb3 (Debian)
-    * mariadb-connector-c (Arch)
-* pip packages: Flask, mariadb, PyJWT
+    * libmysqlclient-dev (Debian)
+    * mysql-connector-c (Arch)
+* pip packages: flask PyJwt mysql-connector-python geopy scipy
 
 ## Installation
 To install the required packages, run the following commands:
 ```bash
-sudo apt-get install libmariadb3
-pip install Flask mariadb PyJWT
+sudo apt-get install libmysqlclient-dev
+pip install flask PyJwt mysql-connector-python geopy scipy
 ```
 
 ## Configuration
@@ -35,7 +35,7 @@ export MY_API_SECRET_KEY="your_secret_key_here"
 ## Usage
 To start the API server, run the following command:
 ```bash
-python -m flask --app app run
+python main.py
 ```
 
 ## Endpoints

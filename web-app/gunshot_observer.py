@@ -13,6 +13,7 @@ class GunshotObserver(ObserverInterface):
 
     def update(self, report):
         report_id = report[0]
+        print("from update:", report_id)
         position = report[1]
         timestamp = report[2]
         weapontype = report[3]
@@ -48,6 +49,7 @@ class GunshotObserver(ObserverInterface):
                         self.db.add_gunshot_report_relation(event.event_id, report_id)
                     break # Since it has found an event
             else: # Create new event
+                print("report ID is:", report_id)
                 event = GunshotEvent(report)
                 event.event_id = self.db.get_latest_gunshot_id() + 1
                 self.events.add(event)

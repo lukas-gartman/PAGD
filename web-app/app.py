@@ -4,6 +4,7 @@ import uuid
 import time
 import base64
 import os
+from collections.abc import Mapping
 import jwt
 
 from pagdDB_interface import PagdDBInterface
@@ -106,11 +107,11 @@ def create_routes(app, db: PagdDBInterface, gunshot_subject: SubjectInterface):
             abort(400, "missing required parameters")
 
         result = db.add_report(timestamp, coord_lat, coord_long, coord_alt, gun)
-        report_id = data.get("report_id")
         if result is not None:
+            report_id = result.get("report_id")
             report = (report_id, (coord_lat, coord_long, coord_alt), timestamp, gun, g.client_id)
             gunshot_subject.notify(report)
-        
+
         return result or abort(500, description="Failed to add the report.")
 
     @app.route("/api/reports", methods = ["GET"])
@@ -118,7 +119,7 @@ def create_routes(app, db: PagdDBInterface, gunshot_subject: SubjectInterface):
         """Search for a report in the database
         @param report_id (int, optional): the report ID
         @param time_from (int, optional): UNIX timestamp of the start of the range
-        @param time_to (int, optional): UNIX timestamp of the beginning of the range
+        @param time_to (int, optional): UNIX timestamp of the end of the range
         @return (json): a JSON object with the result
         """
         report_id = request.args.get("id")
@@ -160,7 +161,7 @@ def create_routes(app, db: PagdDBInterface, gunshot_subject: SubjectInterface):
             result = db.add_temp_gunshot(gunshot_id, report_id, gun)
         else: # able to add a complete gunshot
             result = db.add_gunshot(gunshot_id, report_id, timestamp, coord_lat, coord_long, coord_alt, gun, shots_fired)
-        
+
         return result or abort(500, description="Failed to add the gunshot. Possibly duplicate entry for gunshot_id.")
 
     @app.route("/api/gunshots", methods = ["PUT"])
