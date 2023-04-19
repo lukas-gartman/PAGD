@@ -99,15 +99,26 @@ class Position:
         @return: Estimated position and timestamp of sound source
         """
         n = len(positions)
+
+       
+
+        def error(x, i):
+            return d(x, i) - SPEED_OF_SOUND_MS*(timestamps[i]-x[3])
+        
+        def d(x, i):
+            return positions[i].distance(Position(*x[:3]))
+        
         # The objective functions to minimize using Nelder-Mead algorithm
         # It is a summation of errors squared e_0^2 + e_1^2 + ... + e_n^2
         # where error e_i is given by
         # e_i = distance between position P_x and P_i - distance traveled by sound between timestamp T_x and T_i
         # Where position P_x and T_x are the variables and P_i and T_i are positions and timestamp of
         # gunshot report i
-
+        # If number of positions n == 3 then we will also try to minimize distance between
+        # transmission and and receiver since position can only be determined on a line
+        # in 3d space
         def objective(x):
-            return sum((positions[i].distance(Position(*x[:3])) - SPEED_OF_SOUND_MS*(timestamps[i]-x[3]))**2 for i in range(n))
+            return sum((d(x, i) * 0.001 if n == 3 else 0) + error(x, i)**2 for i in range(n))
         # Starting guess P_0 is midpoint of positions and T_0 earliest gunshot report timestamp
         x0 = Position.midpoint(positions).v + (min(timestamps),)
         # Bounds on latitude and longitude
@@ -116,6 +127,9 @@ class Position:
         sol = scipy.optimize.minimize(objective, x0=x0, method="Nelder-Mead", bounds=bounds, tol=10^-4).x
 
         # print("Minimization solution:",sol,"Objective value:",objective(sol))
+
+        if objective(sol) > 10000 or any(d(sol, i) > MAX_DISTANCE for i in range(n)):
+            return None, None
         return Position(*sol[:3]), int(sol[3])
 
 class GunshotReport:
@@ -263,8 +277,9 @@ class GunshotEvent:
         """
         first_reports = list(self._get_first_reports()) # Only the report of the first gunshot heard, not following gunshots
         if len(first_reports) < 3:
-            return None, None
-        self.position, self.timestamp = Position.tdoa([r.position for r in first_reports], [r.timestamp for r in first_reports])
+            self.position, self.timestamp = None, None
+        else:
+            self.position, self.timestamp = Position.tdoa([r.position for r in first_reports], [r.timestamp for r in first_reports])
         return self.position, self.timestamp
 
 #------------TESTING-----------
