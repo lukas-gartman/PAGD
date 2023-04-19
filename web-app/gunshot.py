@@ -1,4 +1,4 @@
-from __future__ import annotations #Crazy hack
+from __future__ import annotations  # Crazy hack
 
 import geopy.distance
 import math
@@ -7,7 +7,7 @@ import os.path
 import os
 import scipy.optimize
 
-MAX_DISTANCE = 1000 
+MAX_DISTANCE = 1000
 """Maximum distance in meters a gunshot can be picked up from"""
 SPEED_OF_SOUND = 343
 """Speed of sound in meters per second"""
@@ -48,7 +48,7 @@ class Position:
     def altitude(self):
         return self.v[2]
 
-    def distance(self, position : Position) -> float:
+    def distance(self, position: Position) -> float:
         """
         Returns the distance in meters from calling position object to
         given position object
@@ -57,7 +57,7 @@ class Position:
         @return: Distance in meters to specified position
         """
 
-        #Calculate distance in meters from just latitude and longitude
+        # Calculate distance in meters from just latitude and longitude
         geodesic = geopy.distance.geodesic(self.spherical, position.spherical).m
         # Take altitude into account using pythagorean theorem
         # This will not be accurate for very large distances due
@@ -65,7 +65,7 @@ class Position:
         # with (relatively) short distances
         return math.sqrt(geodesic**2 + (self.altitude - position.altitude)**2)
 
-    def midpoint(positions : list[Position]) -> Position:
+    def midpoint(positions: list[Position]) -> Position:
         """
         Returns the midpoint of a list of positions
 
@@ -75,11 +75,11 @@ class Position:
         n = len(positions)
         # Again, this will be accurate for these
         # (relatively) short distances
-        return Position(sum(p.latitude for p in positions) / n, 
-                        sum(p.longitude for p in positions) / n, 
+        return Position(sum(p.latitude for p in positions) / n,
+                        sum(p.longitude for p in positions) / n,
                         sum(p.altitude for p in positions) / n)
 
-    def tdoa(positions : list[Position], timestamps : list[int]) -> tuple[Position, int]:
+    def tdoa(positions: list[Position], timestamps: list[int]) -> tuple[Position, int]:
         """
         Given a list of positions of sound recievers and when these
         recievers picked up a sound, it uses TDOA
@@ -101,24 +101,25 @@ class Position:
         n = len(positions)
         # The objective functions to minimize using Nelder-Mead algorithm
         # It is a summation of errors squared e_0^2 + e_1^2 + ... + e_n^2
-        # where error e_i is given by 
+        # where error e_i is given by
         # e_i = distance between position P_x and P_i - distance traveled by sound between timestamp T_x and T_i
         # Where position P_x and T_x are the variables and P_i and T_i are positions and timestamp of
         # gunshot report i
+
         def objective(x):
             return sum((positions[i].distance(Position(*x[:3])) - SPEED_OF_SOUND_MS*(timestamps[i]-x[3]))**2 for i in range(n))
         # Starting guess P_0 is midpoint of positions and T_0 earliest gunshot report timestamp
         x0 = Position.midpoint(positions).v + (min(timestamps),)
         # Bounds on latitude and longitude
-        bounds = ((-90,90),(-180,180),(None,None),(None,None))
+        bounds = ((-90, 90), (-180, 180), (None, None), (None, None))
         # Minimize using scipy's optimization library
         sol = scipy.optimize.minimize(objective, x0=x0, method="Nelder-Mead", bounds=bounds, tol=10^-4).x
 
-        #print(f'Minimization solution: {sol} Objective value: {objective(sol)}')
-        return Position(*sol[:3]),int(sol[3])
+        # print("Minimization solution:",sol,"Objective value:",objective(sol))
+        return Position(*sol[:3]), int(sol[3])
 
 class GunshotReport:
-    def __init__(self, position : Position, timestamp: int, weapontype: str, clientid: int):
+    def __init__(self, position: Position, timestamp: int, weapontype: str, clientid: str):
         """
         @param position: Position of the client that heard the gunshot
         @param timestamp: Timestamps in milliseconds when gunshot was
@@ -132,7 +133,7 @@ class GunshotReport:
         self.clientid = clientid
 
     @classmethod
-    def from_coordinates(cls, coordinates : tuple[float, float, float], timestamp: int, weapontype: str, clientid: int):
+    def from_coordinates(cls, coordinates: tuple[float, float, float], timestamp: int, weapontype: str, clientid: str):
         """
         @param coordinates: Tuple of latitude, longitude, and altitude.
         Latitude and longitude is given in degress, altitude in meters
@@ -143,15 +144,20 @@ class GunshotReport:
         """
         return cls(Position(*coordinates), timestamp, weapontype, clientid)
 
-    def description(self):
+    def __str__(self):
         """
         Returns a string describing the gunshot report
         """
-        return ("Gunshot of type: " + self.weapontype + " detected at time: " + str(self.timestamp) + 
-            " by client " + str(self.clientid) + " at position: " + str(self.position.latitude) + ", " + 
-            str(self.position.longitude) + " at altitude: " + str(self.position.altitude))
+        return ("Gunshot of type: " + self.weapontype + " detected at time: " + str(self.timestamp) +
+                " by client " + self.clientid + " at position: " + str(self.position.latitude) + ", " +
+                str(self.position.longitude) + " at altitude: " + str(self.position.altitude))
+
+    def __repr__(self):
+        return str(self)
 
 class GunshotEvent:
+    MIN_CLIENTS = 3
+
     def __init__(self, gunshot: GunshotReport):
         """
         @param gunshot: The first gunshot report of a new event,
@@ -197,7 +203,8 @@ class GunshotEvent:
         @return: True if gunshot report was added to event,
         otherwise False.
         """
-        if (gunshot.weapontype == self.weapontype and
+        if (gunshot.clientid not in self.clients and 
+                gunshot.weapontype == self.weapontype and
                 self._inside_range(gunshot)):
             self.gunshots.append(gunshot)
             self.clients.add(gunshot.clientid)
@@ -254,7 +261,7 @@ class GunshotEvent:
         @return: Tuple of position, timestamp if estimate was
         possible, otherwise None,None
         """
-        first_reports = list(self._get_first_reports()) #Only the report of the first gunshot heard, not following gunshots
+        first_reports = list(self._get_first_reports()) # Only the report of the first gunshot heard, not following gunshots
         if len(first_reports) < 3:
             return None, None
         self.position, self.timestamp = Position.tdoa([r.position for r in first_reports], [r.timestamp for r in first_reports])
@@ -270,7 +277,8 @@ def popevent(event):
             if gunshot.clientid == client:
                 gunshotsheard += 1
         gunshotcount = max(gunshotcount, gunshotsheard)
-    print("\t" + str(gunshotcount) + " " + event.weapontype + " gunshot(s) heard by " + str(len(event.clients)) + " clients at time: " + str(event.timestamp_first_report))
+    print("\t" + str(gunshotcount) + " " + event.weapontype + " gunshot(s) heard by " +
+          str(len(event.clients)) + " clients at time: " + str(event.timestamp_first_report))
     if len(event.clients) < 3:
         print("\tPosition not able to be pinpointed due to too few reports")
     else:
@@ -281,25 +289,25 @@ def testfile(gunshotstrings):
     events = []
     for line in gunshotstrings:
         latitude, longitude, altitude, timestamp, weapontype, clientid = line.split(" ")[:6]
-        gunshot = GunshotReport.from_coordinates((float(latitude), float(longitude), float(altitude)), int(timestamp), weapontype, int(clientid))
+        gunshot = GunshotReport.from_coordinates((float(latitude), float(longitude), float(altitude)), int(timestamp), weapontype, clientid)
         [popevent(event) for event in events if gunshot.timestamp - event.timestamp_latest_report > MAX_TIME_DIFF]
         events = [event for event in events if gunshot.timestamp - event.timestamp_latest_report <= MAX_TIME_DIFF]
         for event in events:
             if event.try_sameclient(gunshot) == True:
                 break
-        else: #No fitting event
+        else:  # No fitting event
             for event in events:
                 if event.try_newclient(gunshot) == True:
                     break
             else:
                 events.append(GunshotEvent(gunshot))
-        print(gunshot.description())
+        print(gunshot)
     for event in events:
         popevent(event)
 
-#Test system using test file of example gunshots or directory of test files
+# Test system using test file of example gunshots or directory of test files
 if __name__ == "__main__":
-    if len(sys.argv) <= 1: #No arguments
+    if len(sys.argv) <= 1: # No arguments
         print("No test files specified.")
     elif os.path.isfile(sys.argv[1]):
         print("--- " + sys.argv[1])
@@ -312,4 +320,3 @@ if __name__ == "__main__":
                 testfile(open(path).readlines())
     else:
         print("Invalid file or directory.")
-        
