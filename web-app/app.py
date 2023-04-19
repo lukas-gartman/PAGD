@@ -68,7 +68,7 @@ def create_routes(app, db: PagdDBInterface, gunshot_subject: SubjectInterface):
         @return json: a status message
         """
         data = request.get_json()
-        gun_name = data.get("gun_name") or abort(400, "required paramter gun_name was not provided")
+        gun_name = data.get("gun_name") or abort(400, "required parameter gun_name was not provided")
         gun_type = data.get("gun_type") or ""
         
         result = db.add_gun(gun_name, gun_type)
@@ -194,7 +194,7 @@ def create_routes(app, db: PagdDBInterface, gunshot_subject: SubjectInterface):
         """Search for gunshots based on time or location (or both)
         @param gunshot_id (int, optional): the gunshot ID
         @param time_from (int, optional): UNIX timestamp of the start of the range
-        @param time_to (int, optional): UNIX timestamp of the beginning of the range
+        @param time_to (int, optional): UNIX timestamp of the end of the range
         @return (json): a JSON object with the result
         """
         gunshot_id = request.args.get("id")

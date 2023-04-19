@@ -9,8 +9,6 @@ import scipy.optimize
 
 MAX_DISTANCE = 1000
 """Maximum distance in meters a gunshot can be picked up from"""
-SPEED_OF_SOUND = 343
-"""Speed of sound in meters per second"""
 SPEED_OF_SOUND_MS = 343/1000
 """Speed of sound in meters per millisecond"""
 MAX_TIME_DIFF = MAX_DISTANCE/SPEED_OF_SOUND_MS
@@ -64,6 +62,12 @@ class Position:
         # to earth's curvature but will work for these purposes
         # with (relatively) short distances
         return math.sqrt(geodesic**2 + (self.altitude - position.altitude)**2)
+    
+    def shift(self, magnitude : float, theta: float, phi: float):
+        new_altitude = self.altitude + math.sin(phi) * magnitude
+        new_geodesic = geopy.distance.distance(meters=magnitude * math.cos(phi)).destination(
+            self.v[:2], bearing=theta)
+        return Position(new_geodesic[0], new_geodesic[1], new_altitude)
 
     def midpoint(positions: list[Position]) -> Position:
         """
