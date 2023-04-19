@@ -114,7 +114,7 @@ class Position:
         # Minimize using scipy's optimization library
         sol = scipy.optimize.minimize(objective, x0=x0, method="Nelder-Mead", bounds=bounds, tol=10^-4).x
 
-        #print("Minimization solution:",sol,"Objective value:",objective(sol))
+        #print(f'Minimization solution: {sol} Objective value: {objective(sol)}')
         return Position(*sol[:3]),int(sol[3])
 
 class GunshotReport:
@@ -237,6 +237,14 @@ class GunshotEvent:
                 yield gunshot
                 clients.add(gunshot.clientid)
 
+    def total_firings(self) -> int:
+        """
+        Estimates the amount of gunshots fired based upon amount of report by individual clients
+
+        @return: Integer of amount of gunshots fired
+        """
+        return max(len(None for report in self.reports if report.clientid == clientid) for clientid in self.clients)
+    
     def approximations(self) -> tuple[Position, int]:
         """
         Tries to estimate the position where the gun was fired and
