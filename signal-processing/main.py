@@ -211,7 +211,11 @@ def processOurData(sampleRate: int, path: str, overWrite:bool):
     for i in range(len(filePaths)):
         filepath = path + "/" + filePaths[i]  # Complete path to file
         fileName = filePaths[i]  # Name of the .wav file in the folder
-        wave = getWave(filepath, sampleRate)  # Load file and get wave
+        try:
+            wave = getWave(filepath, sampleRate)  # Load file and get wave
+        except Exception as e:
+            print(e, " at file: " + fileName)
+            continue
         buffer = []
 
         if sampleRate == 8000:
@@ -269,7 +273,11 @@ def processFolder(sampleRate: int, path: str, negative: bool, debug: bool, overW
             output = []
             previousFileName = fileName
 
-        wave = getWave(path, sampleRate)  # Load file and get wave
+        try:
+            wave = getWave(path, sampleRate)  # Load file and get wave
+        except Exception as e:
+            print(e, " at file: " + path)
+            continue
         wave = preProcessWave(wave, sampleRate)  # Correct the dimensions of the wave
         spectrogram = getSpectrogram(wave)  # Obtain the spectrogram
 
@@ -313,18 +321,22 @@ def trainModel(positivePath="./trainingDataPos8khz", negativePath="./trainingDat
     for index in np.arange(0,len(paths),batchSize):
         data = None
         for i in range(batchSize):
-            if index + i >= len(paths):
-                break
-            path = paths[index + i][0]
-            label = paths[index + i][1]
-            if label == 1:
-                file = tensorReadJSON(positivePath + '/' + path)
-                file = tf.data.Dataset.zip((file, tf.data.Dataset.from_tensor_slices(tf.ones(len(file)))))
-            else:
+            try:
+                if index + i >= len(paths):
+                    break
+                path = paths[index + i][0]
+                label = paths[index + i][1]
+                if label == 1:
+                    file = tensorReadJSON(positivePath + '/' + path)
+                    file = tf.data.Dataset.zip((file, tf.data.Dataset.from_tensor_slices(tf.ones(len(file)))))
+                else:
 
-                file = tensorReadJSON(negativePath + '/' + path)
-                file = tf.data.Dataset.zip((file, tf.data.Dataset.from_tensor_slices(tf.zeros(len(file)))))
-            data = safeTensorConcatenate(data, file)
+                    file = tensorReadJSON(negativePath + '/' + path)
+                    file = tf.data.Dataset.zip((file, tf.data.Dataset.from_tensor_slices(tf.zeros(len(file)))))
+                data = safeTensorConcatenate(data, file)
+            except Exception as e:
+                print(e)
+                continue
 
 
 
@@ -332,7 +344,7 @@ def trainModel(positivePath="./trainingDataPos8khz", negativePath="./trainingDat
         train_len = int(len(data) * 0.1)
         data = data.cache()
         # Adjust these values to your liking (Use len(data))
-        data = data.shuffle(buffer_size=int(len(data)))
+        data = data.shuffle(buffer_size=int(len(data) / 4))
         data = data.batch(40)
         data = data.prefetch(20)
         train = data.take(train_len)
@@ -349,6 +361,51 @@ def trainModel(positivePath="./trainingDataPos8khz", negativePath="./trainingDat
     plot.ylabel('accuracy')
     plot.xlabel('epoch')
     plot.legend(['train', 'test'], loc='lower right')'''
+
+def trainModel2(posFilesPath = "./trainingDataPos8khz", negFilesPath = "./trainingDataNeg8khz"):
+    posFilesPaths = os.listdir(posFilesPath)
+    negFilesPaths = os.listdir(negFilesPath)
+    random.shuffle(posFilesPaths)
+    random.shuffle(negFilesPaths)
+
+    posdata = None
+    for path in posFilesPaths:
+        try:
+            file = tensorReadJSON(posFilesPath + "/" + path)
+            file = tf.data.Dataset.zip((file, tf.data.Dataset.from_tensor_slices(tf.ones(len(file)))))
+            posdata = safeTensorConcatenate(posdata, file)
+        except Exception as e:
+            print(e)
+            continue
+
+    negdata = None
+    for path in negFilesPaths:
+        try:
+            file = tensorReadJSON(negFilesPath + "/" + path)
+            file = tf.data.Dataset.zip((file, tf.data.Dataset.from_tensor_slices(tf.zeros(len(file)))))
+            negdata = safeTensorConcatenate(negdata, file)
+        except Exception as e:
+            print(e)
+            continue
+
+    ratio = 10
+
+    datasize = min(negdata.cardinality(), int(posdata.cardinality() * ratio))
+
+    posdata = posdata.shuffle(buffer_size=int(len(posdata) / 4))
+    negdata = negdata.shuffle(buffer_size=int(len(negdata) / 4))
+
+    data = safeTensorConcatenate(negdata.take(datasize), posdata.take(datasize // ratio))
+    print(f'Positive: {datasize // ratio} Negative: {datasize}')
+    # New above
+    data = data.cache()
+    # Adjust these values to your liking (Use len(data))
+    data = data.shuffle(buffer_size=int(len(data) / 4))
+    data = data.batch(64)
+    data = data.prefetch(64)
+    train_len = int(len(data) * 0.7)
+    model.fit(data.take(train_len), epochs=25, validation_data=data.skip(train_len))
+    model.save("AI_PAGD")
 
 
 def convertAI(input_path='./AI_PAGD'):
@@ -382,4 +439,4 @@ if __name__ == '__main__':
     # trainModel(modelPath="TEST.py")
 
     # convertAI()
-    pass
+    
