@@ -230,7 +230,7 @@ Loading
 ./Evaluation_data/pos/SIG9_Hollowpoint_MIC_TO_WALL.json
 ./Evaluation_data/Clapping_hands/handclapsFolderTest.json
 
-Handguns
+Handguns - Testing on own recordings of gunshots from a shooting range (Samsung Edge S6)
 Positive Predictions -- Recall: 0.9160312443244748
 Predictions: [0.9845012  0.95513517 0.9950311  0.99900275 0.9429736  0.99859893
  0.9705074  0.93569773 0.9872455  0.99842227 0.50881034 0.9542647
@@ -240,7 +240,7 @@ Predictions: [0.9845012  0.95513517 0.9950311  0.99900275 0.9429736  0.99859893
  0.97772986 0.51948535 0.96433747 0.8520798  0.86401904 0.9191304
  0.9468347  0.81150925 0.46478516 0.9967034  0.8352675 ]
 
-Clapping hands
+Clapping hands - Testing on own recordings of clapping hands in front of the microphne (Samsung Edge S6)
 Negative Predictions -- Precision: 0.9736731750235776
 Predictions: [0.00366689 0.00044805 0.00140223 0.16861206 0.01203167 0.05907253
  0.03380879 0.00938935 0.00598399 0.01469349 0.00340216 0.00341069]
