@@ -33,8 +33,8 @@ def create_routes(app, db: PagdDBInterface, gunshot_subject: SubjectInterface):
         
         try:
             decoded_token = jwt.decode(token, SECRET_KEY, "HS256")
-            g.client_id = decoded_token["id"] # store the client ID in the Flask g object
-            g.expiration_date = decoded_token["exp"] # store the expiration date in the Flask g object
+            g.client_id = decoded_token.get("id") # store the client ID in the Flask g object
+            g.expiration_date = decoded_token.get("exp") # store the expiration date in the Flask g object
         except (jwt.DecodeError, KeyError) as ex:
             print("Invalid token:", str(ex))
             abort(401, description=f"Invalid token: {str(ex)}")
