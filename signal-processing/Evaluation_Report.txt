@@ -1,0 +1,251 @@
+Evaluation Report
+
+modelBest.py - uses same model as model3, and the following parameters:
+
+	test_len = 5%
+	test_data length = 16127 spektrograms
+
+        data = data.cache()
+        data = data.shuffle(buffer_size=len(data))
+        data = data.batch(40)
+        data = data.prefetch(20)
+
+        # Define class weights (adjust as needed)
+        class_weight = {0: 3, 1: 1}
+
+        # Train the model for one epoch with the current batch
+        model.fit(data, epochs=4, class_weight=class_weight)#, validation_data=testData)
+
+Output:
+
+
+Model: "sequential"
+_________________________________________________________________
+ Layer (type)                Output Shape              Param #   
+=================================================================
+ conv2d (Conv2D)             (None, 60, 61, 16)        416       
+                                                                 
+ batch_normalization (BatchN  (None, 60, 61, 16)       64        
+ ormalization)                                                   
+                                                                 
+ activation (Activation)     (None, 60, 61, 16)        0         
+                                                                 
+ conv2d_1 (Conv2D)           (None, 58, 59, 32)        4640      
+                                                                 
+ batch_normalization_1 (Batc  (None, 58, 59, 32)       128       
+ hNormalization)                                                 
+                                                                 
+ flatten (Flatten)           (None, 109504)            0         
+                                                                 
+ dense (Dense)               (None, 128)               14016640  
+                                                                 
+ batch_normalization_2 (Batc  (None, 128)              512       
+ hNormalization)                                                 
+                                                                 
+ activation_1 (Activation)   (None, 128)               0         
+                                                                 
+ dropout (Dropout)           (None, 128)               0         
+                                                                 
+ dense_1 (Dense)             (None, 1)                 129       
+                                                                 
+=================================================================
+Total params: 14,022,529
+Trainable params: 14,022,177
+Non-trainable params: 352
+_________________________________________________________________
+
+loading
+./trainingDataNeg8khz/Shopping71.json
+./trainingDataNeg8khz/handclapsFolderTrain.json
+./trainingDataNeg8khz/urban8k_18.json
+./trainingDataNeg8khz/Random_M2.json
+./trainingDataNeg8khz/ESC_50_2.json
+./trainingDataNeg8khz/Shopping74.json
+./trainingDataPos8khz/Colt1911_iPhone.json
+./trainingDataPos8khz/SIG9_Hollowpoint.json
+./trainingDataPos8khz/BoltAction22_iPhone.json
+./trainingDataNeg8khz/Random_S2.json
+./trainingDataNeg8khz/Shopping57.json
+./trainingDataNeg8khz/urban8k_21.json
+./trainingDataPos8khz/MP40_1_Samsung.json
+./trainingDataPos8khz/SW22_Samsung.json
+./trainingDataNeg8khz/urban8k_23.json
+./trainingDataNeg8khz/Random_M18.json
+./trainingDataNeg8khz/Silent_silence0.json
+./trainingDataNeg8khz/Random_M13.json
+./trainingDataNeg8khz/Shopping73.json
+./trainingDataNeg8khz/Wind1.json
+./trainingDataPos8khz/WASR_iPhone.json
+./trainingDataPos8khz/SW38SP_Samsung.json
+./trainingDataNeg8khz/urban8k_11.json
+./trainingDataPos8khz/Kimber45_Samsung.json
+./trainingDataPos8khz/M16_iPhone.json
+./trainingDataPos8khz/WinM14_Samsung.json
+./trainingDataNeg8khz/Random_M29.json
+./trainingDataNeg8khz/Shopping48.json
+./trainingDataPos8khz/Glock9_1_iPhone.json
+./trainingDataPos8khz/SW22_iPhone.json
+./trainingDataNeg8khz/ESC_50.json
+./trainingDataNeg8khz/urban8k_17.json
+./trainingDataNeg8khz/urban8k_22.json
+./trainingDataNeg8khz/urban8k_2.json
+./trainingDataPos8khz/Glock9_1_Samsung.json
+./trainingDataPos8khz/Ruger357_iPhone.json
+./trainingDataNeg8khz/Random_M22.json
+./trainingDataNeg8khz/Shopping54.json
+./trainingDataNeg8khz/ESC_50_3.json
+./trainingDataNeg8khz/Random_S0.json
+./trainingDataNeg8khz/Shopping2.json
+./trainingDataPos8khz/SIG9_Samsung.json
+./trainingDataNeg8khz/Random_M5.json
+./trainingDataPos8khz/Kimber45_iPhone.json
+./trainingDataPos8khz/Lorcin380_iPhone.json
+./trainingDataNeg8khz/Random_S6.json
+./trainingDataNeg8khz/Shopping76.json
+./trainingDataNeg8khz/Shopping4.json
+./trainingDataPos8khz/SIG9_iPhone.json
+./trainingDataPos8khz/SpKing22_Samsung.json
+./trainingDataPos8khz/Glock9_2_iPhone.json
+./trainingDataNeg8khz/Shopping56.json
+./trainingDataNeg8khz/Random_M11.json
+./trainingDataNeg8khz/Shopping75.json
+./trainingDataNeg8khz/Random_M0.json
+./trainingDataPos8khz/HKUSP_iPhone.json
+./trainingDataPos8khz/MP40_2_Samsung.json
+./trainingDataNeg8khz/Random_M8.json
+./trainingDataNeg8khz/Random_M25.json
+./trainingDataNeg8khz/Random_M26.json
+./trainingDataNeg8khz/ESC_50_18.json
+./trainingDataNeg8khz/Random_M27.json
+./trainingDataNeg8khz/Random_S9.json
+./trainingDataNeg8khz/Shopping11.json
+./trainingDataNeg8khz/Shopping50.json
+./trainingDataNeg8khz/urban8k_16.json
+./trainingDataNeg8khz/Shopping46.json
+./trainingDataNeg8khz/Shopping49.json
+./trainingDataPos8khz/WASR_Samsung.json
+./trainingDataNeg8khz/Random_M7.json
+./trainingDataPos8khz/Glock45_Samsung.json
+./trainingDataNeg8khz/Random_S1.json
+./trainingDataNeg8khz/Shopping45.json
+./trainingDataNeg8khz/Random_S3.json
+./trainingDataNeg8khz/Random_M23.json
+./trainingDataNeg8khz/Shopping9.json
+./trainingDataPos8khz/ASSAULT_RIFLE_556_MUFFLED_IN_POCKET_OUTSIDE_ROOM.json
+./trainingDataNeg8khz/ESC_50_14.json
+./trainingDataPos8khz/MP40_1_iPhone.json
+./trainingDataNeg8khz/Shopping7.json
+./trainingDataPos8khz/Lorcin380_Samsung.json
+./trainingDataPos8khz/HKUSP_Samsung.json
+./trainingDataNeg8khz/Wind2.json
+./trainingDataNeg8khz/Random_S7.json
+./trainingDataNeg8khz/Shopping10.json
+./trainingDataNeg8khz/Random_M24.json
+./trainingDataNeg8khz/ESC_50_19.json
+./trainingDataNeg8khz/Random_M3.json
+./trainingDataPos8khz/BoltAction22_Samsung.json
+./trainingDataNeg8khz/Random_M9.json
+./trainingDataNeg8khz/Random_M21.json
+./trainingDataPos8khz/Ruger22_Samsung.json
+./trainingDataPos8khz/SIG9_FMJ_Outside.json
+./trainingDataNeg8khz/Shopping8.json
+./trainingDataNeg8khz/Random_M30.json
+./trainingDataPos8khz/MP40_2_iPhone.json
+./trainingDataNeg8khz/urban8k_15.json
+./trainingDataNeg8khz/Normal silence0.json
+./trainingDataNeg8khz/Shopping51.json
+./trainingDataNeg8khz/urban8k_12.json
+./trainingDataNeg8khz/Random_M16.json
+./trainingDataNeg8khz/Shopping72.json
+./trainingDataNeg8khz/Silent_silence1.json
+./trainingDataNeg8khz/urban8k_1.json
+./trainingDataPos8khz/Ruger22_iPhone.json
+./trainingDataPos8khz/Rem700_iPhone.json
+./trainingDataNeg8khz/urban8k_0.json
+./trainingDataNeg8khz/Random_M20.json
+./trainingDataNeg8khz/Shopping13.json
+./trainingDataNeg8khz/Shopping12.json
+./trainingDataNeg8khz/Random_M12.json
+./trainingDataPos8khz/M16_Samsung.json
+./trainingDataNeg8khz/Random_S8.json
+./trainingDataNeg8khz/Shopping6.json
+./trainingDataNeg8khz/Shopping47.json
+./trainingDataNeg8khz/Wind3.json
+./trainingDataNeg8khz/Shopping53.json
+./trainingDataNeg8khz/urban8k_20.json
+./trainingDataNeg8khz/Random_M1.json
+./trainingDataNeg8khz/Random_S5.json
+./trainingDataNeg8khz/Random_M6.json
+./trainingDataNeg8khz/Wind0.json
+./trainingDataNeg8khz/Random_M4.json
+./trainingDataNeg8khz/Random_M28.json
+./trainingDataNeg8khz/Shopping1.json
+./trainingDataPos8khz/SIG9_FMJ_MIC_TO_SOURCE.json
+./trainingDataPos8khz/Glock9_2_Samsung.json
+./trainingDataPos8khz/Glock45_iPhone.json
+./trainingDataNeg8khz/urban8k_10.json
+./trainingDataNeg8khz/urban8k_13.json
+./trainingDataPos8khz/Rem700_Samsung.json
+./trainingDataNeg8khz/ESC_50_16.json
+./trainingDataNeg8khz/Shopping52.json
+./trainingDataNeg8khz/Random_M19.json
+./trainingDataNeg8khz/urban8k_19.json
+./trainingDataNeg8khz/Shopping5.json
+./trainingDataNeg8khz/Random_M10.json
+./trainingDataNeg8khz/Random_M14.json
+./trainingDataNeg8khz/ESC_50_15.json
+./trainingDataNeg8khz/ESC_50_1.json
+./trainingDataNeg8khz/Random_M15.json
+./trainingDataNeg8khz/Shopping55.json
+./trainingDataNeg8khz/Silent_silence2.json
+./trainingDataPos8khz/Colt1911_Samsung.json
+./trainingDataNeg8khz/Shopping3.json
+./trainingDataPos8khz/Ruger357_Samsung.json
+./trainingDataNeg8khz/urban8k_14.json
+./trainingDataNeg8khz/Random_S4.json
+./trainingDataNeg8khz/Random_M17.json
+./trainingDataPos8khz/SW38SP_iPhone.json
+./trainingDataPos8khz/SpKing22_iPhone.json
+./trainingDataNeg8khz/ESC_50_17.json
+./trainingDataNeg8khz/Shopping0.json
+./trainingDataNeg8khz/ESC_50_4.json
+./trainingDataPos8khz/WinM14_iPhone.json
+
+Training
+Epoch 1/4
+404/404 [==============================] - 79s 192ms/step - loss: 0.1631 - recall: 0.8788 - precision: 0.9610
+Epoch 2/4
+404/404 [==============================] - 79s 196ms/step - loss: 0.1197 - recall: 0.9355 - precision: 0.9703
+Epoch 3/4
+404/404 [==============================] - 79s 195ms/step - loss: 0.0990 - recall: 0.9501 - precision: 0.9725
+Epoch 4/4
+404/404 [==============================] - 79s 195ms/step - loss: 0.0857 - recall: 0.9581 - precision: 0.9768
+WARNING:absl:Found untraced functions such as _jit_compiled_convolution_op, _jit_compiled_convolution_op, _update_step_xla while saving (showing 3 of 3). These functions will not be directly callable after loading.
+21/21 [==============================] - 1s 26ms/step - loss: 0.0908 - recall: 0.9216 - precision: 0.9543
+Results: [0.09083379060029984, 0.9215686321258545, 0.9543147087097168]
+
+Loading
+./Evaluation_data/pos/SIG9_FMJ.json
+./Evaluation_data/pos/SIG9_FMJ_MIC_TO_WALL.json
+./Evaluation_data/pos/SIG9_Hollowpoint_MIC_TO_WALL.json
+./Evaluation_data/Clapping_hands/handclapsFolderTest.json
+
+Handguns
+Positive Predictions -- Recall: 0.9160312443244748
+Predictions: [0.9845012  0.95513517 0.9950311  0.99900275 0.9429736  0.99859893
+ 0.9705074  0.93569773 0.9872455  0.99842227 0.50881034 0.9542647
+ 0.88213533 0.9988014  0.9874007  0.9773519  0.9406561  0.9138188
+ 0.92613506 0.9981655  0.91597277 0.997889   0.97650146 0.8843829
+ 0.98785293 0.9362139  0.98016846 0.9748985  0.9515328  0.9453309
+ 0.97772986 0.51948535 0.96433747 0.8520798  0.86401904 0.9191304
+ 0.9468347  0.81150925 0.46478516 0.9967034  0.8352675 ]
+
+Clapping hands
+Negative Predictions -- Precision: 0.9736731750235776
+Predictions: [0.00366689 0.00044805 0.00140223 0.16861206 0.01203167 0.05907253
+ 0.03380879 0.00938935 0.00598399 0.01469349 0.00340216 0.00341069]
+2023-04-20 16:30:54.078650: W tensorflow/compiler/mlir/lite/python/tf_tfl_flatbuffer_helpers.cc:364] Ignored output_format.
+2023-04-20 16:30:54.078793: W tensorflow/compiler/mlir/lite/python/tf_tfl_flatbuffer_helpers.cc:367] Ignored drop_control_dependency.
+
+Process finished with exit code 0
+
