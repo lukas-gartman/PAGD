@@ -23,7 +23,11 @@ pip install numpy matplotlib json skipy tensorflow
 **processFolder()** - Generate trainingdata and output them to a predefined folder as JSON files containing an array of Tensorflow spectrograms of shape (64,65,1)
 Possible sample rates: 8000, 16000
 
+**processNegativeFolderFully()** - Generate json files containing an array of 120 spectrograms each, taken from longer audio clips that are located in the folder specified as input to the function
+
 **trainModel()** - Use a folder with positive and a folder with negative training data to train a ML model
+
+**predict()** - Load positive and negative data from JSON files located in the folders specified as input to the function, and get back posData and negData that can be used as input to model.predict().
 
 (Use tensorflow library to load all files in batches : Not implemented)
 
