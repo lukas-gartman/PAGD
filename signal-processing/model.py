@@ -1,15 +1,23 @@
 import tensorflow as tf
-# Define the model
+
 model = tf.keras.Sequential(
     [
-        tf.keras.layers.Conv2D(16, (3,3), activation='relu', input_shape=(256, 257, 1)),
-        tf.keras.layers.Conv2D(16, (3,3), activation='relu'),
+        tf.keras.layers.Conv2D(16, (5, 5), input_shape=(64, 65, 1)),
+        tf.keras.layers.BatchNormalization(),
+        tf.keras.layers.Activation('relu'),
+        tf.keras.layers.Conv2D(32, (3, 3)),
+        tf.keras.layers.BatchNormalization(),
         tf.keras.layers.Flatten(),
-        tf.keras.layers.Dense(128, activation='relu'),
+        tf.keras.layers.Dense(128),
+        tf.keras.layers.BatchNormalization(),
+        tf.keras.layers.Activation('relu'),
+        tf.keras.layers.Dropout(0.1),
         tf.keras.layers.Dense(1, activation='sigmoid')
     ]
 )
 
-model.compile(optimizer='adam', loss='binary_crossentropy', metrics=[tf.keras.metrics.Recall(),tf.keras.metrics.Precision()])
+model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.1),
+              loss='binary_crossentropy',
+              metrics=[tf.keras.metrics.Recall(), tf.keras.metrics.Precision()])
 
 model.summary()

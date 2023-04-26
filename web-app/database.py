@@ -1,4 +1,4 @@
-import mariadb
+import mysql.connector
 import json
 
 class Database:
@@ -22,7 +22,7 @@ class Database:
         self._close()
 
     def _connect(self):
-        self.conn = mariadb.connect(
+        self.conn = mysql.connector.connect(
             host = self.host,
             port = self.port,
             user = self.user,
