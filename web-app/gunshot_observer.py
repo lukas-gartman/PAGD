@@ -26,12 +26,14 @@ class GunshotObserver(ObserverInterface):
 
     def _add_gunshot(self, report_id, report):
         for event in self.events: # Try to find an event that fits with a report from the same client
-            if event.try_sameclient(report):
+            if event.fits(report) and event.client_has_added(report):
+                event.add_report(report)
                 self.db.add_gunshot_report_relation(event.event_id, report_id)
                 break # Since it has found an event
         else: # Try to find an event that fits
             for event in self.events:
-                if event.try_newclient(report):
+                if event.fits(report) and not event.client_has_added(report):
+                    event.add_report(report)
                     p, timestamp = event.approximations() # May be None if clients < 3 or position could not be determined
                     num_of_clients = len(event.clients)
                     if p is not None:

@@ -188,63 +188,65 @@ class GunshotEvent:
         self.timestamp_first_report = gunshot.timestamp
         self.timestamp_latest_report = gunshot.timestamp
 
-    def try_sameclient(self, gunshot: GunshotReport) -> bool:
-        """
-        Check if the client that reported given gunshot report,
-        has previously reported gunshots in this event, and
-        the gunshot report seems to be related to this event.
-        If so, it adds it to this event and returns True, 
-        otherwise it returns False.
+    def fits(self, report: GunshotReport):
+        '''
+        Returns true if gunshot report is related to this event.
+        Functions based on a set of rules as follows:
+        - position of report is within range of other reports in event
+        - timestamp of report is in within range of other reports
 
-        @param gunshot: The gunshot report to check if it belongs
-        @return: True if gunshot report was added to event,
-        otherwise False.
-        """
-        if (gunshot.clientid in self.clients and
-                gunshot.weapontype == self.weapontype and
-                self._inside_range(gunshot)):
-            self.gunshots.append(gunshot)
-            self.timestamp_latest_report = max(self.timestamp_latest_report, gunshot.timestamp)
-            self.timestamp_first_report = min(self.timestamp_first_report, gunshot.timestamp)
-            return True
-        return False
+        @param report: The gunshot report to check if it belongs
+        @return: True if gunshot report is related to this event,
+        otherwise False
+        '''
+        return (report.weapontype == self.weapontype and
+                self._inside_range(report) and
+                self._within_time_margin(report))
 
-    def try_newclient(self, gunshot: GunshotReport) -> bool:
-        """
-        Check if the client that reported given gunshot report,
-        has no previously reported gunshots in this event, and
-        the gunshot report seems to be related to this event.
-        If so, it adds it to this event and returns True, 
-        otherwise it returns False.
+    def client_has_added(self, report: GunshotReport):
+        '''
+        Return true if the client that reported given gunshot report,
+        has previously reported gunshots in this event
 
-        @param gunshot: The gunshot report to check if it belongs
-        @return: True if gunshot report was added to event,
-        otherwise False.
-        """
-        if (gunshot.clientid not in self.clients and 
-                gunshot.weapontype == self.weapontype and
-                self._inside_range(gunshot)):
-            self.gunshots.append(gunshot)
-            self.clients.add(gunshot.clientid)
-            self.timestamp_latest_report = max(self.timestamp_latest_report, gunshot.timestamp)
-            self.timestamp_first_report = min(self.timestamp_first_report, gunshot.timestamp)
-            return True
-        return False
+        @param report: The gunshot report to check for client match
+        @return: True if client reporting has previosly reported to
+        this event, otherwise False
+        '''
+        return report.clientid in self.clients
+    
+    def add_report(self, report: GunshotReport):
+        '''
+        Add report to event
 
-    def _inside_range(self, gunshot: GunshotReport):
+        @param report: The gunshot report to add to event
+        '''
+        self.gunshots.append(report)
+        self.clients.add(report.clientid)
+        self.timestamp_latest_report = max(self.timestamp_latest_report, report.timestamp)
+        self.timestamp_first_report = min(self.timestamp_first_report, report.timestamp)
+
+    def _inside_range(self, report: GunshotReport):
         """
-        Return true if the position of the client reporting a gunshot,
+        Return True if the position of the client reporting a gunshot
         is close to all other positions of gunshot reports in this
-        event. Otherwise returns false.
+        event, otherwise returns false.
 
-        @param gunshot: The gunshot report to check
+        @param report: The gunshot report to check
         @return: True if gunshot report was in event range, otherwise
         False
         """
-        for gs in self.gunshots:
-            if gunshot.position.distance(gs.position) > MAX_DISTANCE*2:
-                return False
-        return True
+        return all(report.position.distance(gs.position) > MAX_DISTANCE*2 for gs in self.gunshots)
+    
+    def _within_time_margin(self, report: GunshotReport):
+        """
+        Return True if the timestamp of gunshot report is close in time
+        to any other gunshot report in this event, otherwise returns false.
+
+        @param report: The gunshot report to check
+        @return: True if gunshot report was within time margin otherwise
+        returns False
+        """
+        return any(abs(report.timestamp - gs.timestamp) < MAX_TIME_DIFF for gs in self.gunshots)
 
     def _get_first_reports(self) -> iter[Position]:
         """
@@ -285,57 +287,3 @@ class GunshotEvent:
         else:
             self.position, self.timestamp = Position.tdoa([r.position for r in first_reports], [r.timestamp for r in first_reports])
         return self.position, self.timestamp
-
-#------------TESTING-----------
-
-def popevent(event):
-    gunshotcount = 0
-    for client in event.clients:
-        gunshotsheard = 0
-        for gunshot in event.gunshots:
-            if gunshot.clientid == client:
-                gunshotsheard += 1
-        gunshotcount = max(gunshotcount, gunshotsheard)
-    print("\t" + str(gunshotcount) + " " + event.weapontype + " gunshot(s) heard by " +
-          str(len(event.clients)) + " clients at time: " + str(event.timestamp_first_report))
-    if len(event.clients) < 3:
-        print("\tPosition not able to be pinpointed due to too few reports")
-    else:
-        pos, time = event.approximations()
-        print("Approximate position: " + str(pos) + " timestamp: " + str(time))
-
-def testfile(gunshotstrings):
-    events = []
-    for line in gunshotstrings:
-        latitude, longitude, altitude, timestamp, weapontype, clientid = line.split(" ")[:6]
-        gunshot = GunshotReport.from_coordinates((float(latitude), float(longitude), float(altitude)), int(timestamp), weapontype, clientid)
-        [popevent(event) for event in events if gunshot.timestamp - event.timestamp_latest_report > MAX_TIME_DIFF]
-        events = [event for event in events if gunshot.timestamp - event.timestamp_latest_report <= MAX_TIME_DIFF]
-        for event in events:
-            if event.try_sameclient(gunshot) == True:
-                break
-        else:  # No fitting event
-            for event in events:
-                if event.try_newclient(gunshot) == True:
-                    break
-            else:
-                events.append(GunshotEvent(gunshot))
-        print(gunshot)
-    for event in events:
-        popevent(event)
-
-# Test system using test file of example gunshots or directory of test files
-if __name__ == "__main__":
-    if len(sys.argv) <= 1: # No arguments
-        print("No test files specified.")
-    elif os.path.isfile(sys.argv[1]):
-        print("--- " + sys.argv[1])
-        testfile(open(sys.argv[1]).readlines())
-    elif os.path.isdir(sys.argv[1]):
-        for path in os.listdir(sys.argv[1]):
-            path = os.path.join(sys.argv[1], path)
-            if os.path.isfile(path):
-                print("--- " + path)
-                testfile(open(path).readlines())
-    else:
-        print("Invalid file or directory.")
