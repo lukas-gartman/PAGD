@@ -1,10 +1,10 @@
 from gunshot import Position, GunshotEvent, GunshotReport, SPEED_OF_SOUND_MS
-import requests, time, random, geopy.distance
+import requests, time, random, argparse
 
 url = "http://lukas.tottes.net"
     
 class Test:
-    def __init__(self, start_timestamp, max_timestamp_error = 100, max_position_error = 15, client_amount = (8,8),
+    def __init__(self, start_timestamp, max_timestamp_error = 100, max_position_error = 15, client_amount = (4,8),
                  client_distance = (50,500), client_heard = 0.9, local = False):
         self.start_timestamp = start_timestamp
         self.gunshots_fired = 0
@@ -123,7 +123,24 @@ class Client:
                 print("Report does not fit in event")
 
 if __name__ == "__main__":
-    while True:
-        test = Test(int(time.time() * 1000), local=False)
-        test.run(1)
-        test.collect_results()
+    parser = argparse.ArgumentParser(
+                    prog = 'test_localization',
+                    description = 'Simulates gunshots and clients to determine localization accuracy')
+    parser.add_argument('-o', '--output', default='results.csv', help="output path for errors")
+    parser.add_argument('-s', '--simulations', default=10000, type=int, help="amount of simulations to run")
+    parser.add_argument('-t', '--timestamp', default=100, type=int, help="max timestamp error")
+    parser.add_argument('-c', '--clients', default=8, type=int, help="amount of clients in simulation")
+    parser.add_argument('-l', '--local', default=True, type=bool, help="if simulations should be run locally or on server")
+    args = parser.parse_args()
+
+
+    file = open(args.output, "a")
+    for i in range(args.simulations):
+        test = Test(int(time.time() * 1000), local=args.local, max_timestamp_error = args.timestamp, client_amount=(args.clients,args.clients))
+        test.run(random.randint(1,8))
+        error = test.collect_results()
+        
+        if error is not None:
+            file.write(str(error).replace('.', ',') + "\n")
+        print(i + 1)
+    file.close()
