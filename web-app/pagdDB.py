@@ -1,4 +1,5 @@
 import sys
+import json
 from database import Database
 from pagdDB_interface import PagdDBInterface
 
@@ -22,7 +23,7 @@ class PagdDB(Database, PagdDBInterface):
         except:
             return None
         
-        return self.to_json(result)
+        return self.to_json(*result)
 
     def get_gun(self, gun_name):
         """Search for a gun
@@ -35,23 +36,34 @@ class PagdDB(Database, PagdDBInterface):
         else:
             query = "SELECT * FROM Guns;"
             result = self.execute(query)
-        return self.to_json(result)
+        return self.to_json(*result)
 
-    def add_report(self, timestamp, coord_lat, coord_long, coord_alt, gun):
+    def add_report(self, timestamp, coord_lat, coord_long, coord_alt, gun, client_id):
         """Add a report
         @param timestamp (int): the UNIX timestamp of the report
         @param coord_lat (float): the latitude coordinate
         @param coord_long (float): the longitude coordinate
         @param coord_alt (float): the altitude coordinate
         @param gun (string): the name of the gun
+        @param client_id (string): the client's unique ID
         @return (json): a JSON object with the newly added report
         """
-        query = "INSERT INTO Reports (timestamp, coord_lat, coord_long, coord_alt, gun) VALUES (%s, %s, %s, %s, %s) RETURNING *;"
+        query = "INSERT INTO Reports (timestamp, coord_lat, coord_long, coord_alt, gun, client_id) VALUES (%s, %s, %s, %s, %s, %s) RETURNING *;"
         try:
-            result = self.execute(query, (timestamp, coord_lat, coord_long, coord_alt, gun))
+            result = self.execute(query, (timestamp, coord_lat, coord_long, coord_alt, gun, client_id))
         except Exception as e:
+            print("add_report (pagdDB.py):", str(e))
             return None
-        return self.to_json(result, default=str)
+        return self.to_json(*result, default=str)
+    
+    def add_reports(self, values):
+        query = "INSERT INTO Reports (timestamp, coord_lat, coord_long, coord_alt, gun, client_id) VALUES (%s, %s, %s, %s, %s, %s) RETURNING *;"
+        try:
+            result = self.execute(query, values)
+        except Exception as e:
+            print("add_reports (pagdDB.py):", str(e))
+            return None
+        return self.to_json(*result, default=str)
 
     def get_report(self, report_id):
         """Search for a report
@@ -65,7 +77,7 @@ class PagdDB(Database, PagdDBInterface):
             query = "SELECT * FROM Reports;"
             result = self.execute(query)
 
-        return self.to_json(result, default=int)
+        return self.to_json(*result, default=int)
     
     def get_report_range(self, time_from, time_to):
         """Search for reports within a given range
@@ -75,7 +87,7 @@ class PagdDB(Database, PagdDBInterface):
         """
         query = "SELECT * FROM Reports WHERE timestamp >= %s AND timestamp < %s;"
         result = self.execute(query, (time_from, time_to))
-        return self.to_json(result, default=int)
+        return self.to_json(*result, default=int)
 
     def add_gunshot(self, gunshot_id, report_id, timestamp, coord_lat, coord_long, coord_alt, gun, shots_fired):
         """Add record of a determined gunshot event based on the given report
@@ -145,7 +157,7 @@ class PagdDB(Database, PagdDBInterface):
             result = self.execute(query, (gunshot_id, report_id))
         except:
             return None
-        return self.to_json(result)
+        return self.to_json(*result)
     
     def update_gunshot(self, gunshot_id, timestamp, coord_lat, coord_long, coord_alt, gun, shots_fired):
         """Update the data of the gunshot with the given ID
@@ -180,7 +192,7 @@ class PagdDB(Database, PagdDBInterface):
         """
         query = "SELECT * FROM Gunshots WHERE gunshot_id = %s;"
         result = self.execute(query, (gunshot_id,)) # must create a tuple
-        return self.to_json(result, default=int)
+        return self.to_json(*result, default=int)
     
     def get_gunshots_by_timestamp(self, time_from, time_to):
         """Search for gunshots within the given time range
@@ -190,7 +202,7 @@ class PagdDB(Database, PagdDBInterface):
         """
         query = "SELECT * FROM Gunshots WHERE timestamp >= %s AND timestamp < %s;"
         result = self.execute(query, (time_from, time_to))
-        return self.to_json(result, default=int)
+        return self.to_json(*result, default=int)
     
     def get_all_gunshots(self):
         """Retrieve all gunshots
@@ -198,7 +210,7 @@ class PagdDB(Database, PagdDBInterface):
         """
         query = "SELECT * FROM Gunshots;"
         result = self.execute(query)
-        return self.to_json(result, default=int)
+        return self.to_json(*result, default=int)
 
     # TODO: def get_gunshot_by_radius(self, midpoint_coord, radius):
     
@@ -208,7 +220,34 @@ class PagdDB(Database, PagdDBInterface):
         """
         query = "SELECT MAX(gunshot_id) AS gunshot_id FROM Gunshots;"
         result = self.execute(query)
-        if len(result) > 0 and not None in result[0]:
-            return result[0][0]
-        return 1
+        # if len(result[0]) > 0 and not None in result[0]:
+        return result[0][0][0] or 0
         # return self.to_json(result, default=int)
+
+    def to_json(self, rows, columns, default = None):
+        """Convert database results to a JSON object
+        @param rows (list): a list of tuples containing the query result
+        @param default (type): the type to cast to by default if unable to determine data type
+        @return (json): a JSON object with the query result
+        """
+        # convert the list of tuples to a list of dictionaries
+        row_dicts = []
+        for row in rows:
+            row_dict = {}
+            for i in range(len(row)):
+                try:
+                    # get the name of the column and set its value in the dictionary
+                    row_dict[columns[i]] = row[i]
+                except IndexError:
+                    pass
+            row_dicts.append(row_dict)
+        json_str = json.dumps(row_dicts, default=default)
+
+        # remove the wrapping array for single results
+        if len(row_dicts) == 1:
+            json_str = json_str[1:-1]
+
+        json_obj = json.loads(json_str)
+        
+        # convert the list of dictionaries to a JSON object
+        return json_obj

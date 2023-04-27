@@ -1,47 +1,40 @@
-import mysql.connector
-import json
+import mysql.connector.pooling
+import time
 
 class Database:
-    def __init__(self, host, port, user, password, database):
+    def __init__(self, host, port, user, password, database, pool_size = 32):
         self.host = host
         self.port = port
         self.user = user
         self.password = password
         self.database = database
-        self.conn = None
-        self.cursor = None
-        self._connect()
-
-    def __del__(self):
-        self._close()
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self):
-        self._close()
-
-    def _connect(self):
-        self.conn = mysql.connector.connect(
+        self.pool = self._create_pool(pool_size)
+    
+    def _create_pool(self, pool_size):
+        pool = mysql.connector.pooling.MySQLConnectionPool(
+            pool_name = "pagd_pool",
+            pool_size = pool_size,
+            pool_reset_session = True,
             host = self.host,
             port = self.port,
             user = self.user,
             password = self.password,
             database = self.database)
-        self.cursor = self.conn.cursor()
-    
-    def _close(self):
-        if self.cursor is not None:
-            self.cursor.close()
-        if self.conn is not None:
-            self.conn.close()
-    
-    def _is_connected(self):
+        return pool
+
+    def _get_connection(self, sleep_timer = 0):
         try:
-            self.conn.ping()
-        except:
-            return False
-        return True
+            conn = self.pool.get_connection()
+        except mysql.connector.errors.PoolError:
+            if sleep_timer >= 10:
+                return None
+            print("pool exhausted, sleep timer is", sleep_timer)
+            sleep_timer += 1
+            time.sleep(sleep_timer)
+            conn = self._get_connection(sleep_timer)
+        if conn is None:
+            print("wtf?")
+        return conn
 
     def execute(self, query, values = None):
         """Execute an SQL query
@@ -49,18 +42,39 @@ class Database:
         @param values (tuple, optional): the parameter values for each %s in the query
         @return list: the query result
         """
-        if not self._is_connected():
-            print("MySQL server has gone away. Reconnecting...")
-            self._connect()
-        
-        self.cursor.execute(query, values)
-        if self.cursor.description is not None:
-            result = self.cursor.fetchall()
-        else:
-            result = []
-        self.conn.commit()
+        conn = self._get_connection()
+        if conn is None:
+            return ([], [])
+        cursor = conn.cursor()
 
-        return result
+        try:
+            if type(values) is list: # Execute query in bulk
+                cursor.executemany(query, values)
+            else:
+                cursor.execute(query, values)
+                
+            desc = cursor.description
+            if desc is not None: # Checks if the query returned something
+                result = cursor.fetchall()
+            else:
+                result = []
+            
+            conn.commit()
+        except Exception as e:
+            conn.rollback() # Roll back to the previous state in case of error
+            raise e
+        finally:
+            cursor.close()
+            conn.close()  # release the connection back to the pool
+
+        columns = self._extract_columns(desc)
+        return (result, columns)
+    
+    def _extract_columns(self, description):
+        columns = []
+        for desc in description:
+            columns.append(desc[0])
+        return columns
     
     def execute_transaction(self, queries, values = None):
         """Execute multiple SQL queries as a transaction
@@ -88,31 +102,3 @@ class Database:
         self.conn.commit()
 
         return result
-    
-    def to_json(self, rows, default = None):
-        """Convert database results to a JSON object
-        @param rows (list): a list of tuples containing the query result
-        @param default (type): the type to cast to by default if unable to determine data type
-        @return (json): a JSON object with the query result
-        """
-        # convert the list of tuples to a list of dictionaries
-        row_dicts = []
-        for row in rows:
-            row_dict = {}
-            for i in range(len(row)):
-                try:
-                    # get the name of the column and set its value in the dictionary
-                    row_dict[self.cursor.description[i][0]] = row[i]
-                except IndexError:
-                    pass
-            row_dicts.append(row_dict)
-        json_str = json.dumps(row_dicts, default=default)
-
-        # remove the wrapping array for single results
-        if len(row_dicts) == 1:
-            json_str = json_str[1:-1]
-
-        json_obj = json.loads(json_str)
-        
-        # convert the list of dictionaries to a JSON object
-        return json_obj

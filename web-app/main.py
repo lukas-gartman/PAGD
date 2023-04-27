@@ -19,7 +19,7 @@ def main():
 
     # Set up the API server routes
     create_routes(app, db, gunshot_subject)
-    app.run(debug=False)
+    app.run(debug=False, threaded=True)
 
     
 if __name__ == "__main__":

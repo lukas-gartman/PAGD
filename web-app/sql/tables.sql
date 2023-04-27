@@ -14,6 +14,7 @@ CREATE OR REPLACE TABLE Reports(
     coord_long FLOAT(23) NOT NULL,
     coord_alt  FLOAT(23) NOT NULL,
     gun        VARCHAR(255) NOT NULL,
+    client_id  VARCHAR(255) NOT NULL,
     FOREIGN KEY (gun) REFERENCES Guns(name)
 );
 

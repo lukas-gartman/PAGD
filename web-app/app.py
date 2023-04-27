@@ -6,11 +6,18 @@ import base64
 import os
 from collections.abc import Mapping
 import jwt
+from queue import Queue
+from threading import Thread, Lock, Event
+from collections import defaultdict
 
 from pagdDB_interface import PagdDBInterface
 from subject_interface import SubjectInterface
 
 SECRET_KEY = base64.b64decode(os.environ["JWT_SECRET_KEY"].encode("utf-8")) # decode the secret key stored in environment
+
+# Settings
+BULK_PROCESSING_TIMEOUT = 1
+CONCURRENT_REQUEST_DIFF = 0.2
 
 def create_routes(app, db: PagdDBInterface, gunshot_subject: SubjectInterface):
     """ Define the endpoints for the API.
@@ -18,6 +25,59 @@ def create_routes(app, db: PagdDBInterface, gunshot_subject: SubjectInterface):
     @param db (PagdDBInterface): an implementation of a PAGD database for storing and retrieving data
     @param gunshot_subject (SubjectInterface): an implementation of a subject for letting other apps know about changes (observer pattern)
     """
+
+    class ReportProcessor:
+        def __init__(self):
+            self.report_queue = []
+            self.results = {}
+            self.lock = Lock()
+            self.event = Event()
+            self.last_request_time = 0
+        
+        def bulk_process_requests(self):
+            time.sleep(BULK_PROCESSING_TIMEOUT)
+            with self.lock:
+                db_result = db.add_reports(self.report_queue)
+                # Create a dictionary of reports for each client
+                if db_result is list:
+                    for r in db_result:
+                        client_id = r.get("client_id")
+                        self.results[client_id] = r
+                else:
+                    client_id = db_result.get("client_id")
+                    self.results[client_id] = db_result
+                
+                self.report_queue = [] # Clear the queue
+                self.event.set() # Threads may proceed to access the result
+            return self.results
+        
+        def handle_request(self, timestamp, coord_lat, coord_long, coord_alt, gun, client_id):
+            current_time = time.time()
+            # Process concurrent reports in bulk
+            if current_time - self.last_request_time <= CONCURRENT_REQUEST_DIFF:
+                with self.lock:
+                    if not self.report_queue: # Start collecting reports
+                        self.report_queue.append((timestamp, coord_lat, coord_long, coord_alt, gun, client_id))
+                        Thread(target=self.bulk_process_requests).start()
+                    else: # Keep filling the queue
+                        self.report_queue.append((timestamp, coord_lat, coord_long, coord_alt, gun, client_id))
+                # Wait for the bulk insert to finish
+                self.event.wait()
+                with self.lock:
+                    try:
+                        result = self.results.pop(client_id)
+                    except KeyError: # Unable to find the report. Error in receiving or processing?
+                        return None
+            else: # Process individually
+                result = db.add_report(timestamp, coord_lat, coord_long, coord_alt, gun, client_id)
+            
+            # Prepare for the next request
+            with self.lock:
+                self.event.clear()
+                self.last_request_time = time.time()
+            return result
+
+
     @app.before_request
     def auth():
         """Authenticate user for each API call by verifying their JWT token in the Authorization header
@@ -86,6 +146,7 @@ def create_routes(app, db: PagdDBInterface, gunshot_subject: SubjectInterface):
             gun_name = url_parser.unquote(gun_name)
         return db.get_gun(gun_name)
 
+    report_processor = ReportProcessor()
     @app.route("/api/reports", methods = ["POST"])
     def add_report():
         """Add a report to the database
@@ -106,7 +167,8 @@ def create_routes(app, db: PagdDBInterface, gunshot_subject: SubjectInterface):
         if None in (timestamp, coord_lat, coord_long, coord_alt, gun):
             abort(400, "missing required parameters")
 
-        result = db.add_report(timestamp, coord_lat, coord_long, coord_alt, gun)
+        result = report_processor.handle_request(timestamp, coord_lat, coord_long, coord_alt, gun, g.client_id)
+
         if result is not None:
             report_id = result.get("report_id")
             report = (report_id, (coord_lat, coord_long, coord_alt), timestamp, gun, g.client_id)
