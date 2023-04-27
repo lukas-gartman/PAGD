@@ -104,8 +104,6 @@ class Position:
         """
         n = len(positions)
 
-       
-
         def error(x, i):
             return d(x, i) - SPEED_OF_SOUND_MS*(timestamps[i]-x[3])
         
@@ -122,7 +120,7 @@ class Position:
         # transmission and and receiver since position can only be determined on a line
         # in 3d space
         def objective(x):
-            return sum((d(x, i) * 0.001 if n == 3 else 0) + error(x, i)**2 for i in range(n))
+            return sum(error(x, i)**2 for i in range(n))
         # Starting guess P_0 is midpoint of positions and T_0 earliest gunshot report timestamp
         x0 = Position.midpoint(positions).v + (min(timestamps),)
         # Bounds on latitude and longitude
@@ -185,8 +183,6 @@ class GunshotEvent:
         self.gunshots = [gunshot]
         self.clients = {gunshot.clientid}
         self.weapontype = gunshot.weapontype
-        self.timestamp_first_report = gunshot.timestamp
-        self.timestamp_latest_report = gunshot.timestamp
 
     def fits(self, report: GunshotReport):
         '''
@@ -222,8 +218,6 @@ class GunshotEvent:
         '''
         self.gunshots.append(report)
         self.clients.add(report.clientid)
-        self.timestamp_latest_report = max(self.timestamp_latest_report, report.timestamp)
-        self.timestamp_first_report = min(self.timestamp_first_report, report.timestamp)
 
     def _inside_range(self, report: GunshotReport):
         """
@@ -235,7 +229,7 @@ class GunshotEvent:
         @return: True if gunshot report was in event range, otherwise
         False
         """
-        return all(report.position.distance(gs.position) > MAX_DISTANCE*2 for gs in self.gunshots)
+        return all(report.position.distance(gs.position) < MAX_DISTANCE*2 for gs in self.gunshots)
     
     def _within_time_margin(self, report: GunshotReport):
         """
@@ -270,7 +264,7 @@ class GunshotEvent:
 
         @return: Integer of amount of gunshots fired
         """
-        return max(len(None for report in self.reports if report.clientid == clientid) for clientid in self.clients)
+        return max(sum(1 for report in self.gunshots if report.clientid == clientid) for clientid in self.clients)
     
     def approximations(self) -> tuple[Position, int]:
         """

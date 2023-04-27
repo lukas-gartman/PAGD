@@ -46,10 +46,10 @@ class GunshotObserver(ObserverInterface):
                             lat, long, alt = None, None, None
 
                         if num_of_clients == GunshotEvent.MIN_CLIENTS:
-                            self.db.add_gunshot(event.event_id, report_id, timestamp, lat, long, alt, event.weapontype, event.total_firings()) # TODO: add shots_fired
+                            self.db.add_gunshot(event.event_id, report_id, timestamp, lat, long, alt, event.weapontype, event.total_firings())
                         elif num_of_clients > GunshotEvent.MIN_CLIENTS:
                             self.db.add_gunshot_report_relation(event.event_id, report_id)
-                            self.db.update_gunshot(event.event_id, timestamp, lat, long, alt, event.weapontype, event.total_firings()) # TODO: add shots_fired
+                            self.db.update_gunshot(event.event_id, timestamp, lat, long, alt, event.weapontype, event.total_firings())
                         else:
                             self.db.add_gunshot_report_relation(event.event_id, report_id)
                         break # Since it has found an event
