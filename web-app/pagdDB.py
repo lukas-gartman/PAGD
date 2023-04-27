@@ -4,9 +4,9 @@ from database import Database
 from pagdDB_interface import PagdDBInterface
 
 class PagdDB(Database, PagdDBInterface):
-    def __init__(self, user, password):
+    def __init__(self, host, user, password):
         try:
-            super().__init__("localhost", 3306, user, password, "pagd")
+            super().__init__(host, 3306, user, password, "pagd")
         except Exception: # hack-fix... should be done properly
             print("Incorrect password")
             sys.exit(1)

@@ -8,7 +8,7 @@ from gunshot_observer import GunshotObserver
 
 def main():
     # Database
-    db = PagdDB("pagd", getpass("Database password: "))
+    db = PagdDB("localhost", "pagd", getpass("Database password: "))
 
     # API server
     app = Flask(__name__)
