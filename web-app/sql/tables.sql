@@ -30,11 +30,9 @@ CREATE OR REPLACE TABLE Gunshots(
 );
 
 CREATE OR REPLACE TABLE GunshotReports(
-    gunshot_id INT,
-    report_id INT,
-    PRIMARY KEY (gunshot_id, report_id),
-    FOREIGN KEY (gunshot_id) REFERENCES Gunshots(gunshot_id),
-    FOREIGN KEY (report_id)  REFERENCES Reports(report_id)
+    gunshot_id INT REFERENCES Gunshots,
+    report_id  INT UNIQUE REFERENCES Reports,
+    PRIMARY KEY (gunshot_id, report_id)
 );
 
 -- Views --
