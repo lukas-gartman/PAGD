@@ -26,14 +26,14 @@ class Database:
         try:
             conn = self.pool.get_connection()
         except mysql.connector.errors.PoolError:
-            if sleep_timer >= 10:
+            if sleep_timer > 10:
                 return None
-            print("pool exhausted, sleep timer is", sleep_timer)
             sleep_timer += 1
+            print(f"Failed getting connection; pool exhausted. Trying again in {sleep_timer}s...")
             time.sleep(sleep_timer)
             conn = self._get_connection(sleep_timer)
         if conn is None:
-            print("wtf?")
+            print(f"Failed to get a connection after {sleep_timer} tries. Giving up...")
         return conn
 
     def execute(self, query, values = None):
@@ -82,23 +82,33 @@ class Database:
         @param values (list[tuple], optional): the parameters in order of queries
         @return list[list]: the query result
         """
-        if not self._is_connected():
-            print("MySQL server has gone away. Reconnecting...")
-            self._connect()
-        
-        result = []
-        for q, v in zip(queries, values):
-            try:
-                self.cursor.execute(q, v)
-                if self.cursor.description is not None:
-                    result.append(self.cursor.fetchall())
-                else:
-                    result.append([])
-            except Exception as e:
-                print("Error occurred, rolling back database...", str(e), sep="\n\t")
-                self.conn.rollback()
-                return []
+        conn = self._get_connection()
+        if conn is None:
+            return ([], [])
+        cursor = conn.cursor()
 
-        self.conn.commit()
+        try:
+            result = []
+            for q, v in zip(queries, values):
+                try:
+                    cursor.execute(q, v)
+                    desc = cursor.description
+                    if desc is not None:
+                        result.append(cursor.fetchall())
+                    else:
+                        result.append([])
+                except Exception as e:
+                    print("Error occurred, rolling back database...", str(e), sep="\n\t")
+                    self.conn.rollback()
+                    return []
 
-        return result
+            conn.commit()
+        except Exception as e:
+            conn.rollback() # Roll back to the previous state in case of error
+            raise e
+        finally:
+            cursor.close()
+            conn.close()  # release the connection back to the pool
+
+        columns = self._extract_columns(desc)
+        return (result, columns)

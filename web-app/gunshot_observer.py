@@ -54,9 +54,7 @@ class GunshotObserver(ObserverInterface):
                             self.db.add_gunshot_report_relation(event.event_id, report_id)
                         break # Since it has found an event
                 else: # Create new event
-                    print("creating new event")
                     event = GunshotEvent(report)
                     event.event_id = self.db.get_latest_gunshot_id() + 1
-                    print("id:", event.event_id)
                     self.events.add(event)
                     self.db.add_temp_gunshot(event.event_id, report_id, event.weapontype)

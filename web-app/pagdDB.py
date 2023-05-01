@@ -52,7 +52,6 @@ class PagdDB(Database, PagdDBInterface):
         try:
             result = self.execute(query, (timestamp, coord_lat, coord_long, coord_alt, gun, client_id))
         except Exception as e:
-            print("add_report (pagdDB.py):", str(e))
             return None
         return self.to_json(*result, default=str)
     
@@ -61,7 +60,6 @@ class PagdDB(Database, PagdDBInterface):
         try:
             result = self.execute(query, values)
         except Exception as e:
-            print("add_reports (pagdDB.py):", str(e))
             return None
         return self.to_json(*result, default=str)
 
@@ -116,10 +114,11 @@ class PagdDB(Database, PagdDBInterface):
         values.append((gunshot_id, report_id))
 
         try:
-            result = self.execute_transaction(queries, values)
+            result, columns = self.execute_transaction(queries, values)
         except:
             return None
-        return self.to_json(result[0], default=str) or None
+        # Return the gunshot which is the first element
+        return self.to_json(result[0], columns, default=str) or None
         
     
     def add_temp_gunshot(self, gunshot_id, report_id, gun):
@@ -141,10 +140,11 @@ class PagdDB(Database, PagdDBInterface):
         values.append((gunshot_id, report_id))
 
         try:
-            result = self.execute_transaction(queries, values)
+            result, columns = self.execute_transaction(queries, values)
         except:
             return None
-        return self.to_json(result[0], default=str) or None
+        # Return the gunshot which is the first element
+        return self.to_json(result[0], columns, default=str) or None
     
     def add_gunshot_report_relation(self, gunshot_id, report_id):
         """Add a gunshot report relation
@@ -180,10 +180,11 @@ class PagdDB(Database, PagdDBInterface):
         values.append((gunshot_id,))
 
         try:
-            result = self.execute_transaction(queries, values)
+            result, columns = self.execute_transaction(queries, values)
         except:
             return None
-        return self.to_json(result[1], default=str) or None
+        # Return the gunshot which is the second element
+        return self.to_json(result[1], columns, default=str) or None
     
     def get_gunshot_by_id(self, gunshot_id):
         """Search for gunshots based on time or location (or both)
@@ -220,9 +221,7 @@ class PagdDB(Database, PagdDBInterface):
         """
         query = "SELECT MAX(gunshot_id) AS gunshot_id FROM Gunshots;"
         result = self.execute(query)
-        # if len(result[0]) > 0 and not None in result[0]:
         return result[0][0][0] or 0
-        # return self.to_json(result, default=int)
 
     def to_json(self, rows, columns, default = None):
         """Convert database results to a JSON object
