@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    >
+
+    <com.google.android.material.switchmaterial.SwitchMaterial
+        android:id="@+id/widgetListening"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:checked="true"
+        android:text="Listening for gunshots"
+
+        />
+
+    <com.google.android.material.slider.Slider
+        android:id="@+id/listeningSlider"
+        android:layout_width="138dp"
+        android:layout_height="wrap_content"
+        android:checked="true"
+        android:stepSize="1"
+        android:text="Listening interval"
+        android:value="1"
+        android:valueFrom="1"
+        android:valueTo="100"
+        />
+
+
+</LinearLayout>

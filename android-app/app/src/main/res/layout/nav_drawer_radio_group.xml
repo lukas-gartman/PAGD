@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RadioGroup xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/radioGroup"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+
+    <RadioButton
+        android:id="@+id/rbPAGD"
+        android:text="PAGD Legacy model"
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"/>
+
+    <RadioButton
+        android:id="@+id/rbYamnet"
+        android:text="Yamnet model"
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"/>
+
+</RadioGroup>

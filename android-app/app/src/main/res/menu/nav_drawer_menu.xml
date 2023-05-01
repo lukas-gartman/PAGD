@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+
+    <item
+        android:id="@+id/display_ai_title"
+        android:title="AudioClassifiers">
+        <menu android:id="@+id/nav_group_audio_classifiers">
+            <group
+
+                android:checkableBehavior="single">
+                <item
+                    android:id="@+id/nav_item_pagd_legacy"
+                    android:title="PAGD Legacy model" />
+                <item
+                    android:id="@+id/nav_item_yamnet"
+                    android:title="Yamnet model" />
+            </group>
+        </menu>
+    </item>
+
+
+    <group android:id="@+id/settingGroup">
+        <item
+            android:id="@+id/display_settings_title"
+            android:title="Display Settings">
+            <menu>
+                <item
+                    android:id="@+id/display_settings"
+                    app:actionLayout="@layout/display_settings"
+                    app:showAsAction="always"
+                    android:enabled="false"/>
+            </menu>
+        </item>
+
+        <item
+            android:id="@+id/gunListening"
+            android:title="Listening Settings">
+            <menu>
+
+                <item
+                android:id="@+id/setListening"
+                app:actionLayout="@layout/listening_settings"
+                app:showAsAction="ifRoom"
+                android:enabled="false"/>
+            </menu>
+        </item>
+    </group>
+
+
+</menu>
