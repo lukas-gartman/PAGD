@@ -276,7 +276,7 @@ class GunshotEvent:
         possible, otherwise None,None
         """
         first_reports = list(self._get_first_reports()) # Only the report of the first gunshot heard, not following gunshots
-        if len(first_reports) < 3:
+        if len(first_reports) < 4:
             self.position, self.timestamp = None, None
         else:
             self.position, self.timestamp = Position.tdoa([r.position for r in first_reports], [r.timestamp for r in first_reports])

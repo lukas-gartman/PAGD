@@ -1,7 +1,7 @@
 from gunshot import Position, GunshotEvent, GunshotReport, SPEED_OF_SOUND_MS
 import requests, time, random, argparse
 
-url = "http://lukas.tottes.net"
+url = "https://lukas.tottes.net"
     
 class Test:
     def __init__(self, start_timestamp, max_timestamp_error = 100, max_position_error = 15, client_amount = (4,8),
@@ -45,17 +45,17 @@ class Test:
             raise Exception(resp)
         
         event = resp.json()
-        print(event)
+        
         if len(event) == 0:
             print("Could not find event")
             return None
-        elif "nånting" in event.keys():
+        if isinstance(event, list):
             print("Too many events")
             return None
-        else:
-            event_pos = Position(event["coord_lat"], event["coord_long"], event["coord_alt"])
-            print(f"Error in meters: {self.gunshot_pos.distance(event_pos)}")
-            return self.gunshot_pos.distance(event_pos)
+        
+        event_pos = Position(event["coord_lat"], event["coord_long"], event["coord_alt"])
+        print(f"Error in meters: {self.gunshot_pos.distance(event_pos)}")
+        return self.gunshot_pos.distance(event_pos)
         
     def collect_results_local(self):
         pos, timestamp = self.event.approximations()
@@ -106,7 +106,7 @@ class Client:
             "coord_lat": self.gps_pos.latitude,
             "coord_long": self.gps_pos.longitude,
             "coord_alt": self.gps_pos.altitude,
-            "gun": "AR-15"
+            "gun": "AK-47"
         }
         resp = requests.post(url + "/api/reports", json=json, headers=headers)
         if not (resp.status_code >= 200 and resp.status_code < 300):
@@ -130,7 +130,7 @@ if __name__ == "__main__":
     parser.add_argument('-s', '--simulations', default=10000, type=int, help="amount of simulations to run")
     parser.add_argument('-t', '--timestamp', default=100, type=int, help="max timestamp error")
     parser.add_argument('-c', '--clients', default=8, type=int, help="amount of clients in simulation")
-    parser.add_argument('-l', '--local', default=True, type=bool, help="if simulations should be run locally or on server")
+    parser.add_argument('-l', '--local', action='store_true', help="if simulations should be run locally or on server")
     args = parser.parse_args()
 
 
