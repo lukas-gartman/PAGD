@@ -282,7 +282,7 @@ class GunshotService : Service() {
 
 
 
-        return NotificationCompat.Builder(this, TrackingService.NOTIFICATION_CHANNEL_ID)
+        return NotificationCompat.Builder(this, GUNSHOT_NOTIFICATION_CHANNEL_ID)
             .setAutoCancel(false)
             .setOngoing(serviceRunning) // Set ongoing based on the service's running state
             .setContentTitle("PAGD App")
