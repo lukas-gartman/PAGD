@@ -117,6 +117,8 @@ class PagdDB(Database, PagdDBInterface):
             result, columns = self.execute_transaction(queries, values)
         except:
             return None
+        
+        print(result)
         # Return the gunshot which is the first element
         return self.to_json(result[0], columns, default=str) or None
         

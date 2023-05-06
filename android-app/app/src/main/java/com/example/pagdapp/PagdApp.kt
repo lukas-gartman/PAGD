@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.content.Context
 import android.os.Build
 import com.google.android.gms.tflite.client.TfLiteInitializationOptions
+import com.google.firebase.messaging.FirebaseMessaging
 import dagger.hilt.android.HiltAndroidApp
 import org.tensorflow.lite.task.gms.vision.TfLiteVision
 
@@ -23,6 +24,9 @@ class PagdApp : Application() {
             val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.createNotificationChannel(channel)
         }
+
+        // Subscribe to receive all updates
+        FirebaseMessaging.getInstance().subscribeToTopic("all")
 
         val options = TfLiteInitializationOptions.builder()
             .setEnableGpuDelegateSupport(true)

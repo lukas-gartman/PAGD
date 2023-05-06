@@ -1,5 +1,6 @@
 plugins {
     id 'com.android.application'
+    id 'com.google.gms.google-services'
     id 'org.jetbrains.kotlin.android'
     id 'com.google.android.libraries.mapsplatform.secrets-gradle-plugin'
     id 'kotlin-kapt'
@@ -10,7 +11,6 @@ android {
     namespace 'com.example.pagdapp'
     compileSdk 33
 
-
     defaultConfig {
         applicationId "com.example.pagdapp"
         minSdk 24
@@ -19,6 +19,14 @@ android {
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        Properties properties = new Properties()
+        properties.load(project.rootProject.file('local.properties').newDataInputStream())
+        // Verify that the MAPS_API_KEY property is defined
+        if (!properties.containsKey('MAPS_API_KEY')) {
+            throw new GradleException("MAPS_API_KEY is not defined in local.properties")
+        }
+        manifestPlaceholders = [MAPS_API_KEY: "${properties.getProperty('MAPS_API_KEY')}"]
     }
     buildFeatures {
         viewBinding = true
@@ -44,8 +52,6 @@ android {
         viewBinding true
         mlModelBinding true
     }
-
-
 }
 
 kapt {
@@ -53,9 +59,12 @@ kapt {
 }
 
 dependencies {
+    // Firebase stuff
+    implementation 'com.google.firebase:firebase-bom:32.0.0'
+    implementation 'com.google.firebase:firebase-core:21.1.1'
+    implementation 'com.google.firebase:firebase-messaging:23.1.2'
 
     //   implementation('com.squareup.okhttp3:okhhtp:4,9.0')
-
     implementation('io.socket:socket.io-client:2.1.0') {
         exclude group: 'org.json', module: 'json'
     }
@@ -78,6 +87,7 @@ dependencies {
     implementation "com.google.android.material:material:1.8.0"
     implementation 'androidx.preference:preference:1.2.0'
     implementation 'androidx.recyclerview:recyclerview:1.3.0'
+    implementation 'com.google.firebase:firebase-messaging-ktx:23.1.0'
 
 
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
@@ -135,5 +145,4 @@ dependencies {
 
     //Audio filtering
     implementation("edu.mines.jtk:edu-mines-jtk:1.1.0")
-
 }

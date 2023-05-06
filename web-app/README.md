@@ -9,7 +9,7 @@ This API allows you to access various resources through a RESTful interface. It 
 * Packages:
     * libmysqlclient-dev (Debian)
     * mysql-connector-c (Arch)
-* pip packages: flask PyJwt mysql-connector-python geopy scipy
+* pip packages: flask PyJwt mysql-connector-python geopy scipy firebase-admin
 
 ## Installation
 To install the required packages, run the following commands:
@@ -29,7 +29,15 @@ secret_key = secrets.token_urlsafe(32)
 ### Storing the secret key in environment variables on Linux
 To store the secret key in an environment variable on Linux, you can add the following line to your **`.bashrc`** or **`.bash_profile`** file:
 ```bash
-export MY_API_SECRET_KEY="your_secret_key_here"
+export JWT_SECRET_KEY="your_secret_key_here"
+```
+
+### Retrieving Firebase credentials
+This project uses Firebase Cloud Messaging for event based communication between the server and the app. Check out [this guide](https://firebaseopensource.com/projects/firebase/quickstart-js/messaging/readme/) for more information on how to get started.
+
+Download your credentials from the Firebase console and store its file path in environment by adding the following line to your **`.bashrc`** or **`.bash_profile`** file:
+```bash
+export FIREBASE_CREDENTIALS="/path/to/credentials.json"
 ```
 
 ## Usage

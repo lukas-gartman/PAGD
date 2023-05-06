@@ -1,4 +1,7 @@
+import os
 from threading import Lock
+import firebase_admin
+from firebase_admin import credentials, messaging
 
 from observer_interface import ObserverInterface
 from subject_interface import SubjectInterface
@@ -13,6 +16,8 @@ class GunshotObserver(ObserverInterface):
         self.events = set()
         self.gunshot_report = None
         self.lock = Lock()
+
+        self._init_firebase()
 
     def update(self, report):
         report_id = report[0]
@@ -46,10 +51,14 @@ class GunshotObserver(ObserverInterface):
                             lat, long, alt = None, None, None
 
                         if num_of_clients == GunshotEvent.MIN_CLIENTS:
-                            self.db.add_gunshot(event.event_id, report_id, timestamp, lat, long, alt, event.weapontype, event.total_firings())
+                            gunshot = self.db.add_gunshot(event.event_id, report_id, timestamp, lat, long, alt, event.weapontype, event.total_firings())
+                            if p is not None: # Notify devices if the position could be determined
+                                self._notify_devices(gunshot)
                         elif num_of_clients > GunshotEvent.MIN_CLIENTS:
                             self.db.add_gunshot_report_relation(event.event_id, report_id)
-                            self.db.update_gunshot(event.event_id, timestamp, lat, long, alt, event.weapontype, event.total_firings())
+                            gunshot = self.db.update_gunshot(event.event_id, timestamp, lat, long, alt, event.weapontype, event.total_firings())
+                            if p is not None: # Notify devices if the position could be determined
+                                self._notify_devices(gunshot, True)
                         else:
                             self.db.add_gunshot_report_relation(event.event_id, report_id)
                         break # Since it has found an event
@@ -58,3 +67,14 @@ class GunshotObserver(ObserverInterface):
                     event.event_id = self.db.get_latest_gunshot_id() + 1
                     self.events.add(event)
                     self.db.add_temp_gunshot(event.event_id, report_id, event.weapontype)
+
+    def _init_firebase(self):
+        cred = credentials.Certificate(os.environ["FIREBASE_CREDENTIALS"])
+        firebase_admin.initialize_app(cred)
+    
+    def _notify_devices(self, data, is_update = False):
+        for k, v in data.items():
+            data[k] = str(v)
+        data["update"] = "1" if is_update else "0"
+        message = messaging.Message(data, topic="all")
+        messaging.send(message)
