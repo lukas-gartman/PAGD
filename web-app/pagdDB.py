@@ -48,15 +48,15 @@ class PagdDB(Database, PagdDBInterface):
         @param client_id (string): the client's unique ID
         @return (json): a JSON object with the newly added report
         """
-        query = "INSERT INTO Reports (timestamp, coord_lat, coord_long, coord_alt, gun, client_id) VALUES (%s, %s, %s, %s, %s, %s) RETURNING *;"
-        try:
-            result = self.execute(query, (timestamp, coord_lat, coord_long, coord_alt, gun, client_id))
-        except Exception as e:
-            return None
+        query = "INSERT INTO Reports (timestamp, coord, altitude, gun, client_id) VALUES (%s, POINT(%s, %s), %s, %s, %s) RETURNING *;"
+        # try:
+        result = self.execute(query, (timestamp, coord_lat, coord_long, coord_alt, gun, client_id))
+        # except Exception as e:
+        #     return None
         return self.to_json(*result, default=str)
     
     def add_reports(self, values):
-        query = "INSERT INTO Reports (timestamp, coord_lat, coord_long, coord_alt, gun, client_id) VALUES (%s, %s, %s, %s, %s, %s) RETURNING *;"
+        query = "INSERT INTO Reports (timestamp, coord, altitude, gun, client_id) VALUES (%s, POINT(%s, %s), %s, %s, %s) RETURNING *;"
         try:
             result = self.execute(query, values)
         except Exception as e:
@@ -69,10 +69,10 @@ class PagdDB(Database, PagdDBInterface):
         @return (json): a JSON object with the result
         """
         if report_id is not None:
-            query = "SELECT * FROM Reports WHERE report_id = %s;"
+            query = "SELECT * FROM ReportsView WHERE report_id = %s;"
             result = self.execute(query, (report_id,)) # must create a tuple
         else:
-            query = "SELECT * FROM Reports;"
+            query = "SELECT * FROM ReportsView;"
             result = self.execute(query)
 
         return self.to_json(*result, default=int)
@@ -83,7 +83,7 @@ class PagdDB(Database, PagdDBInterface):
         @param time_to (int): UNIX timestamp of the beginning of the range
         @return (json): a JSON object with the result
         """
-        query = "SELECT * FROM Reports WHERE timestamp >= %s AND timestamp < %s;"
+        query = "SELECT * FROM ReportsView WHERE timestamp >= %s AND timestamp < %s;"
         result = self.execute(query, (time_from, time_to))
         return self.to_json(*result, default=int)
 
@@ -103,9 +103,8 @@ class PagdDB(Database, PagdDBInterface):
         values  = []
 
         # Add the gunshot and update if it already exists
-        queries.append("""INSERT INTO Gunshots VALUES (%s, %s, %s, %s, %s, %s, %s) ON DUPLICATE KEY UPDATE
-            timestamp = VALUES(timestamp), coord_lat = VALUES(coord_lat), coord_long = VALUES(coord_long), coord_alt = VALUES(coord_alt),
-            gun = VALUES(gun), shots_fired = VALUES(shots_fired)
+        queries.append("""INSERT INTO Gunshots VALUES (%s, %s, POINT(%s, %s), %s, %s, %s) ON DUPLICATE KEY UPDATE
+            timestamp = VALUES(timestamp), coord = VALUES(coord), altitude = VALUES(altitude), gun = VALUES(gun), shots_fired = VALUES(shots_fired)
             RETURNING *;""")
         values.append((gunshot_id, timestamp, coord_lat, coord_long, coord_alt, gun, shots_fired))
         
@@ -118,7 +117,6 @@ class PagdDB(Database, PagdDBInterface):
         except:
             return None
         
-        print(result)
         # Return the gunshot which is the first element
         return self.to_json(result[0], columns, default=str) or None
         
@@ -175,10 +173,10 @@ class PagdDB(Database, PagdDBInterface):
         queries = []
         values = []
         
-        queries.append("UPDATE Gunshots SET timestamp = %s, coord_lat = %s, coord_long = %s, coord_alt = %s, gun = %s, shots_fired = %s WHERE gunshot_id = %s;")
+        queries.append("UPDATE Gunshots SET timestamp = %s, coord = POINT(%s, %s), altitude = %s, gun = %s, shots_fired = %s WHERE gunshot_id = %s;")
         values.append((timestamp, coord_lat, coord_long, coord_alt, gun, shots_fired, gunshot_id))
         
-        queries.append("SELECT * FROM Gunshots WHERE gunshot_id = %s;") # RETURNING * is not supported for UPDATE queries, therefore you must select
+        queries.append("SELECT * FROM GunshotsView WHERE gunshot_id = %s;") # RETURNING * is not supported for UPDATE queries, therefore you must select
         values.append((gunshot_id,))
 
         try:
@@ -193,7 +191,7 @@ class PagdDB(Database, PagdDBInterface):
         @param gunshot_id (int): the gunshot ID
         @return (json): a JSON object with the result
         """
-        query = "SELECT * FROM Gunshots WHERE gunshot_id = %s;"
+        query = "SELECT * FROM GunshotsView WHERE gunshot_id = %s;"
         result = self.execute(query, (gunshot_id,)) # must create a tuple
         return self.to_json(*result, default=int)
     
@@ -203,7 +201,7 @@ class PagdDB(Database, PagdDBInterface):
         @param time_to (int):   UNIX timestamp of the start of the range
         @return (json): a JSON object with the result
         """
-        query = "SELECT * FROM Gunshots WHERE timestamp >= %s AND timestamp < %s;"
+        query = "SELECT * FROM GunshotsView WHERE timestamp >= %s AND timestamp < %s;"
         result = self.execute(query, (time_from, time_to))
         return self.to_json(*result, default=int)
     
@@ -211,7 +209,7 @@ class PagdDB(Database, PagdDBInterface):
         """Retrieve all gunshots
         @return (json): a JSON object with the result
         """
-        query = "SELECT * FROM Gunshots;"
+        query = "SELECT * FROM GunshotsView;"
         result = self.execute(query)
         return self.to_json(*result, default=int)
 

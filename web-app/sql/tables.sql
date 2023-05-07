@@ -8,22 +8,20 @@ CREATE OR REPLACE TABLE Guns(
 );
 
 CREATE OR REPLACE TABLE Reports(
-    report_id  INT PRIMARY KEY AUTO_INCREMENT,
-    timestamp  BIGINT NOT NULL,
-    coord_lat  FLOAT(23) NOT NULL,
-    coord_long FLOAT(23) NOT NULL,
-    coord_alt  FLOAT(23) NOT NULL,
-    gun        VARCHAR(255) NOT NULL,
-    client_id  VARCHAR(255) NOT NULL,
+    report_id INT PRIMARY KEY AUTO_INCREMENT,
+    timestamp BIGINT NOT NULL,
+    coord     POINT NOT NULL,
+    altitude  FLOAT(5,1) NOT NULL,
+    gun       VARCHAR(255) NOT NULL,
+    client_id VARCHAR(255) NOT NULL,
     FOREIGN KEY (gun) REFERENCES Guns(name)
 );
 
 CREATE OR REPLACE TABLE Gunshots(
     gunshot_id  INT PRIMARY KEY,
     timestamp   BIGINT,
-    coord_lat   FLOAT(23),
-    coord_long  FLOAT(23),
-    coord_alt   FLOAT(23),
+    coord       POINT,
+    altitude    FLOAT(5,1),
     gun         VARCHAR(255) NOT NULL,
     shots_fired INT,
     FOREIGN KEY (gun) REFERENCES Guns(name)
@@ -36,6 +34,14 @@ CREATE OR REPLACE TABLE GunshotReports(
 );
 
 -- Views --
-CREATE VIEW GunshotEvents AS
-    SELECT G.gunshot_id, R.report_id, G.timestamp, G.coord_lat, G.coord_long, G.coord_alt, G.gun, G.shots_fired
+CREATE OR REPLACE VIEW ReportsView AS
+    SELECT report_id, timestamp, X(coord) AS coord_lat, Y(coord) AS coord_long, altitude AS coord_alt, gun, client_id
+    FROM Reports;
+
+CREATE OR REPLACE VIEW GunshotsView AS
+    SELECT gunshot_id, timestamp, X(coord) AS coord_lat, Y(coord) AS coord_long, altitude AS coord_alt, gun, shots_fired
+    FROM Gunshots;
+
+CREATE OR REPLACE VIEW GunshotEventsWithReports AS
+    SELECT G.gunshot_id, R.report_id, G.timestamp, X(G.coord) AS coord_lat, Y(G.coord) AS coord_long, G.altitude AS coord_alt, G.gun, G.shots_fired
     FROM Gunshots AS G, Reports AS R;
