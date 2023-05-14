@@ -2,8 +2,10 @@ package com.example.pagdapp.ui.viewModels
 
 import android.location.Location
 import androidx.lifecycle.*
+import com.example.pagdapp.data.model.GunshotData
 import com.example.pagdapp.data.model.audioclassifier.IAudioClassifier
 import com.example.pagdapp.data.repository.SharedRepository
+import com.example.pagdapp.utils.Event
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import javax.inject.Named
@@ -11,11 +13,8 @@ import javax.inject.Named
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
-    @Named("PAGDClassifier") private val audioClassifierPAGD: IAudioClassifier,
-    @Named("YamnetClassifier") private val audioClassifierYamnet: IAudioClassifier,
     private val sharedRepository: SharedRepository
 ) : ViewModel() {
-
 
 
     val isSendingReports: LiveData<Boolean> = sharedRepository.isSendingReports
@@ -28,11 +27,24 @@ class MainViewModel @Inject constructor(
     private val _showLocation = MutableLiveData(false)
     val showLocation: LiveData<Boolean> = _showLocation
 
+    private val _showHeatmap = MutableLiveData(false)
+    val showHeatmap: LiveData<Boolean> = _showHeatmap
+
+
     val dateFromToInMilli: androidx.core.util.Pair<Long, Long>
         get() = androidx.core.util.Pair(
             sharedRepository.dateFromToInMilli.first,
             sharedRepository.dateFromToInMilli.second
         )
+
+
+    val gunshotNotifications: LiveData<GunshotData> = sharedRepository.gunshotNotifications
+
+    private val _clickGunshotNotification = MutableLiveData<Event<GunshotData>>()
+    val clickGunshotNotification: LiveData<Event<GunshotData>> = _clickGunshotNotification
+
+    private val _isFreshStart = MutableLiveData<Boolean>(true)
+    val isFreshStart: LiveData<Boolean> get() = _isFreshStart
 
 
     fun setDateFromTo(date: androidx.core.util.Pair<Long, Long>) {
@@ -45,6 +57,10 @@ class MainViewModel @Inject constructor(
 
     fun setResult(show: Boolean) {
         _showResult.postValue(show)
+    }
+
+    fun toggleHeatmap(show: Boolean) {
+        _showHeatmap.postValue(show)
     }
 
 
@@ -62,5 +78,13 @@ class MainViewModel @Inject constructor(
     override fun onCleared() {
         super.onCleared()
         sharedRepository.activeClassifier.value!!.removeGunshotListener()
+    }
+
+    fun updateClickGunshotNotification(gunshotData: GunshotData) {
+        _clickGunshotNotification.postValue(Event(gunshotData))
+    }
+
+    fun setFreshStart(value: Boolean) {
+        _isFreshStart.value = value
     }
 }

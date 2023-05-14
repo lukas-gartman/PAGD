@@ -48,7 +48,7 @@ class PAGDClassifier @Inject constructor(
     private val probabilityThreshold: LiveData<Float> get() = _probabilityThreshold
 
     private val _delay = MutableLiveData(500L)
-    private val delay: LiveData<Long> get() = _delay
+    private val delay: LiveData<Long> = _delay
     private val classificationFlow = MutableSharedFlow<AudioClassificationResult>()
     private var thisAIModelsCategories = mutableListOf<Category>()
     private var categoriesToInclude = mutableListOf<String>()
@@ -166,7 +166,7 @@ class PAGDClassifier @Inject constructor(
             val output2 = arrayOf(floatArrayOf(1.0f))
             model_interpreter.run(arrayOf(spectrogram), output2)
 
-
+            Log.e("classifyAudio", output2[0][0].toString())
             if (output2[0][0] >= probabilityThreshold.value!!) {
                 val audioClassificationResult = AudioClassificationResult(
                     timestamp,
@@ -272,6 +272,10 @@ class PAGDClassifier @Inject constructor(
 
     override fun setDelay(delay: Long) {
         _delay.postValue(delay)
+    }
+
+    override fun getDelay(): LiveData<Long> {
+        TODO("Not yet implemented")
     }
 
     override fun getResult(): LiveData<String> {

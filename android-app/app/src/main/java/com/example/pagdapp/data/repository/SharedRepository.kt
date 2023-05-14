@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import com.example.pagdapp.data.model.GunshotData
 import com.example.pagdapp.data.model.audioclassifier.AudioClassificationResult
 import com.example.pagdapp.data.model.audioclassifier.IAudioClassifier
 import com.example.pagdapp.utils.Constants
@@ -16,7 +17,9 @@ import javax.inject.Named
 
 class SharedRepository @Inject constructor(
     private val context: Context,
-    @Named("PAGDClassifier") private val audioClassifierPAGD: IAudioClassifier,
+    @Named("PAGDClassifierModel5") private val audioClassifierPAGD_5: IAudioClassifier,
+    @Named("PAGDClassifierModel8") private val audioClassifierPAGD_8: IAudioClassifier,
+    @Named("PAGDClassifierModel9") private val audioClassifierPAGD_9: IAudioClassifier,
     @Named("YamnetClassifier") private val audioClassifierYamnet: IAudioClassifier
 ) {
 
@@ -37,7 +40,7 @@ class SharedRepository @Inject constructor(
     private val _isRunning = MutableLiveData(false)
     val isRunning: LiveData<Boolean> get() = _isRunning
 
-    private val _isListening = MutableLiveData(true)
+    private val _isListening = MutableLiveData(false)
     val isListening: LiveData<Boolean> = _isListening
 
     private val _intervalDelay = MutableLiveData(Constants.CONTINUOUS_NETWORK_CALL_MIDDLE)
@@ -46,12 +49,16 @@ class SharedRepository @Inject constructor(
     private val _classifierResult = MutableLiveData<AudioClassificationResult>()
     val classifierResult: LiveData<AudioClassificationResult> = _classifierResult
 
+    private val _notificationFlow = MutableSharedFlow<GunshotData>()
+    val notificationFlow: Flow<GunshotData> = _notificationFlow
+
     private var _dateFromToInMilliseconds = androidx.core.util.Pair(
         MaterialDatePicker.thisMonthInUtcMilliseconds(),
         MaterialDatePicker.todayInUtcMilliseconds()
     )
 
-
+    private val _gunshotNotifications = MutableLiveData<GunshotData>()
+    val gunshotNotifications : LiveData<GunshotData> = _gunshotNotifications
 
     val dateFromToInMilli: Pair<Long, Long>
         get() = Pair(
@@ -97,10 +104,22 @@ class SharedRepository @Inject constructor(
 
         when (classifierType) {
 
-            "PAGD Legacy model" -> {
-                _activeClassifier.value = audioClassifierPAGD
-                _activeClassifierName.value = "PAGD Legacy model"
-                sharedPreferences.edit().putString("SELECTED_CLASSIFIER", "PAGD Legacy model")
+            "PAGD Legacy model 5" -> {
+                _activeClassifier.value = audioClassifierPAGD_5
+                _activeClassifierName.value = "PAGD Legacy model 5"
+                sharedPreferences.edit().putString("SELECTED_CLASSIFIER", "PAGD Legacy model 5")
+                    .apply()
+            }
+            "PAGD Legacy model 8" -> {
+                _activeClassifier.value = audioClassifierPAGD_8
+                _activeClassifierName.value = "PAGD Legacy model 8"
+                sharedPreferences.edit().putString("SELECTED_CLASSIFIER", "PAGD Legacy model 8")
+                    .apply()
+            }
+            "PAGD Legacy model 9" -> {
+                _activeClassifier.value = audioClassifierPAGD_9
+                _activeClassifierName.value = "PAGD Legacy model 9"
+                sharedPreferences.edit().putString("SELECTED_CLASSIFIER", "PAGD Legacy model 9")
                     .apply()
             }
             "Yamnet model" -> {
@@ -134,6 +153,15 @@ class SharedRepository @Inject constructor(
                 _classifierResult.postValue(result)
             }
         }
+    }
+
+    fun updateGunshotNotification(gunshotData: GunshotData){
+        _gunshotNotifications.postValue(gunshotData)
+    }
+
+    suspend fun updateNotificationFlow(message: GunshotData) {
+        _notificationFlow.emit(message)
+        Log.e("updateNotificationFlow", message.toString() )
     }
 
 }

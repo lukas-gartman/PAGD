@@ -46,7 +46,7 @@ class YamnetClassifier(context: Context, model: String) : IAudioClassifier {
     private val _probabilityThreshold = MutableLiveData(0.5f)
     private val probabilityThreshold: LiveData<Float> get() = _probabilityThreshold
     private val _delay = MutableLiveData(500L)
-    private val delay: LiveData<Long> get() = _delay
+    private val delay: LiveData<Long> = _delay
     private var categoriesToInclude = mutableListOf<String>()
     private var format: TensorAudio.TensorAudioFormat? = null
     private val result = MutableLiveData<String>()
@@ -178,6 +178,10 @@ class YamnetClassifier(context: Context, model: String) : IAudioClassifier {
         _delay.postValue(delay)
     }
 
+    override fun getDelay(): LiveData<Long> {
+       return delay
+    }
+
     /**
      * Gets the current classification result.
      *
@@ -263,7 +267,7 @@ class YamnetClassifier(context: Context, model: String) : IAudioClassifier {
             val output = classifier.classify(tensorAudio)
 
             val filterByScore = output[0].categories.filter { category ->
-                category.score > probabilityThreshold.value!!
+                category.score >= probabilityThreshold.value!!
             }
 
             val filterByCategory = filterByScore.filter { category ->
@@ -276,7 +280,7 @@ class YamnetClassifier(context: Context, model: String) : IAudioClassifier {
                 filterByCategory.sortedBy { -it.score }
                     .joinToString(separator = "\n") { "${it.label} -> ${it.score} " }
 
-
+            Log.e("classifyAudio", filterByScore.toString())
             val resultWithHighestScore = filterByCategory.maxByOrNull { it.score }
 
             if (resultWithHighestScore != null) {
@@ -299,7 +303,7 @@ class YamnetClassifier(context: Context, model: String) : IAudioClassifier {
 
             }
 
-            Log.e("classifyAudio", outputStr)
+
             result.postValue(outputStr)
             delay(delay.value!!)
 

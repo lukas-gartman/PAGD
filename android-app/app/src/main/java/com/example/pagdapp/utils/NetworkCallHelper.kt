@@ -1,11 +1,16 @@
 package com.example.pagdapp.utils
 
 import android.util.Log
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.isActive
 import retrofit2.Response
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.delay
 
 object NetworkCallHelper {
 
@@ -38,10 +43,12 @@ object NetworkCallHelper {
 
 
     inline fun <T> apiCallContinuous(
+        scope: CoroutineScope,
         crossinline apiCall: suspend () -> Response<T>,
+        noinline callBackError: suspend () -> Unit = {},
         delayMillis: Long
     ): Flow<NetworkResult<T>> = flow {
-        while (true) {
+        while (scope.isActive) {
             emit(NetworkResult.Loading())
             try {
                 val response = apiCall()
@@ -52,9 +59,13 @@ object NetworkCallHelper {
                     } ?:  emit(NetworkResult.Error(response.code(), response.message()))
                 } else {
                     emit(NetworkResult.Error(response.code(), response.message()))
+                    if(response.code() == 401) {
+                        handleErrorResponse(response, callBackError)
+                    }
                 }
             } catch (e: Exception) {
                 emit(NetworkResult.Error(0, e.message.toString()))
+
             }
             delay(delayMillis)
         }
@@ -81,9 +92,8 @@ object NetworkCallHelper {
         }
     }
 
-    suspend inline fun <T> simpleApiCall(
-        crossinline apiCall: suspend () -> Response<T>
-    ): NetworkResult<T> =
+    suspend inline fun <T> simpleApiCall(crossinline apiCall: suspend () -> Response<T>):
+            NetworkResult<T> =
         try {
             val response = apiCall()
             if (response.isSuccessful) {
@@ -92,6 +102,25 @@ object NetworkCallHelper {
                     Log.e("ApiResponseSuccess", body.toString())
                     NetworkResult.Success(response.code(), body)
                 } ?: NetworkResult.Error(response.code(), response.message())
+            } else {
+                error("${response.code()} ${response.message()}")
+            }
+        } catch (e: Exception) {
+            Log.e("ApiResponseFailure", e.toString())
+            NetworkResult.Error(0, e.message.toString())
+        }
+
+    suspend inline fun <T> simpleApiCallToString(crossinline apiCall: suspend () -> Response<T>):
+            NetworkResult<String> =
+        try {
+            val response = apiCall()
+            Log.e("simpleApiCallToString", response.toString() )
+            if (response.isSuccessful) {
+                val body = response.body().toString()
+                body.let {
+                    Log.e("ApiResponseSuccess", body)
+                    NetworkResult.Success(response.code(), body)
+                }
             } else {
                 error("${response.code()} ${response.message()}")
             }

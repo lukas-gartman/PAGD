@@ -16,14 +16,16 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.*
 import com.example.pagdapp.R
+import com.example.pagdapp.data.model.GunshotData
 import com.example.pagdapp.data.model.dbModels.Gunshot
-import com.example.pagdapp.databinding.FragmentMapsBinding
 import com.example.pagdapp.data.model.dbModels.Report
-import com.example.pagdapp.data.remote.retrofitServices.GoogleService
-import com.example.pagdapp.utils.NetworkResult
+import com.example.pagdapp.data.model.networkModels.GunshotNetworkModel
+import com.example.pagdapp.databinding.FragmentMapsBinding
 import com.example.pagdapp.ui.viewModels.MainViewModel
 import com.example.pagdapp.ui.viewModels.ReportViewModel
 import com.example.pagdapp.ui.viewModels.SettingsViewModel
+import com.example.pagdapp.utils.MapUtils
+import com.example.pagdapp.utils.NetworkResult
 import com.google.android.gms.location.*
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
@@ -32,21 +34,25 @@ import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
+import com.google.android.gms.maps.model.TileOverlayOptions
+import com.google.maps.android.heatmaps.HeatmapTileProvider
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.*
 
 @AndroidEntryPoint
-class MapsFragment : Fragment(), ReportDialog.ReportDialogListener {
+class MapsFragment : Fragment(), ReportDialog.ReportDialogListener, GunshotDialog.GunshotListener {
 
     private lateinit var mMap: GoogleMap
     private lateinit var fusedLocationClient: FusedLocationProviderClient
 
     private val _userLocation = MutableLiveData<Location>()
     private var userLocation: LiveData<Location>? = _userLocation
+    private lateinit var gunshotData: GunshotData
+    private val heatmapData = mutableListOf<LatLng>()
+    private val heatmapProvider = HeatmapTileProvider.Builder()
 
 
     private val sharedMainViewModel: MainViewModel by activityViewModels()
@@ -72,6 +78,7 @@ class MapsFragment : Fragment(), ReportDialog.ReportDialogListener {
             }!!
         binding = FragmentMapsBinding.inflate(inflater, container, false)
 
+
         return binding.root
     }
 
@@ -81,24 +88,53 @@ class MapsFragment : Fragment(), ReportDialog.ReportDialogListener {
         mapFragment?.getMapAsync(callback)
 
 
+
         displayLocationView()
         displayClassificationView()
-        subscribeCollectors()
+
+
     }
 
-    private fun subscribeCollectors() {
+    private fun subscribeGunshotNotification(mMap: GoogleMap) {
+        sharedMainViewModel.gunshotNotifications.observe(viewLifecycleOwner) {
+            MapUtils.createMarker(it, mMap)
+
+        }
+
+    }
+
+    private fun subscribeCollectors(mMap: GoogleMap) {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                reportViewModel.gunshots.collect { result ->
-                    when (result) {
-                        is NetworkResult.Loading -> ""
-                        is NetworkResult.Success -> {
-                            gunshotsToMarkers(result.data!!)
+                launch {
+                    combine(
+                        reportViewModel.gunshots,
+                        sharedMainViewModel.showHeatmap.asFlow()
+                    ) { gunshotsResult, showHeatmap ->
+                        Pair(gunshotsResult, showHeatmap)
+                    }.collect { (result, showHeatmap) ->
+                        when (result) {
+                            is NetworkResult.Loading -> ""
+                            is NetworkResult.Success -> {
+                                mMap.clear()
+                                if (showHeatmap) {
+                                    addHeatMap(mMap, result.data!!)
+                                } else {
+                                    gunshotsToMarkers(result.data!!)
+                                }
+                            }
+                            is NetworkResult.Error -> {
+                                Toast.makeText(requireContext(), result.message, Toast.LENGTH_LONG)
+                                    .show()
+                            }
                         }
-                        is NetworkResult.Error -> {
-                            Toast.makeText(requireContext(), result.message, Toast.LENGTH_SHORT)
-                                .show()
-                        }
+                    }
+                }
+
+                launch {
+                    reportViewModel.errorFlow.collect { error ->
+                        Toast.makeText(requireContext(), error, Toast.LENGTH_SHORT)
+                            .show()
                     }
                 }
             }
@@ -107,11 +143,11 @@ class MapsFragment : Fragment(), ReportDialog.ReportDialogListener {
 
 
     private val callback = OnMapReadyCallback { googleMap ->
-
-
         try {
             mMap = googleMap
             initSendReportButtons()
+            subscribeGunshotNotification(mMap)
+            subscribeCollectors(mMap)
 
             mMap.setOnMarkerDragListener(object : GoogleMap.OnMarkerDragListener {
                 override fun onMarkerDrag(p0: Marker) {}
@@ -129,18 +165,35 @@ class MapsFragment : Fragment(), ReportDialog.ReportDialogListener {
                 }
             })
 
+
             initLocationRequest()
             placeMarker()
+            placeGunshot()
             fetchMarkers()
 
             mMap.isMyLocationEnabled = true
 
-            fusedLocationClient.lastLocation.addOnSuccessListener { location: Location ->
+            sharedMainViewModel.clickGunshotNotification.observe(viewLifecycleOwner) { event ->
+                event.getContentIfNotHandled()?.let { gunshotData ->
+                    MapUtils.animateCameraToLocation(
+                        mMap,
+                        LatLng(gunshotData.coordLat, gunshotData.coordLong),
+                        DEFAULT_ZOOM.toFloat(),
+                        1000
+                    )
+                } ?: fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+                    val currentLocation = LatLng(location.latitude, location.longitude)
+                    mMap.moveCamera(
+                        CameraUpdateFactory.newLatLngZoom(currentLocation, DEFAULT_ZOOM.toFloat())
+                    )
+                }
+            }
+
+            fusedLocationClient.lastLocation.addOnSuccessListener { location ->
                 val currentLocation = LatLng(location.latitude, location.longitude)
                 mMap.moveCamera(
                     CameraUpdateFactory.newLatLngZoom(currentLocation, DEFAULT_ZOOM.toFloat())
                 )
-
             }
 
 
@@ -175,41 +228,6 @@ class MapsFragment : Fragment(), ReportDialog.ReportDialogListener {
                     sharedMainViewModel.updateUserLocation(location)
                 }
             }
-        }
-    }
-
-    private fun getDeviceLocation() {
-        try {
-            val locationResult = fusedLocationClient.lastLocation
-            locationResult.addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-
-                    // Set the map's camera position to the current location of the device.
-                    val userLocation = task.result
-                    if (userLocation != null) {
-
-                        _userLocation.postValue(task.result)
-                        val lat = "lat: " + userLocation.latitude
-                        val long = ", lng: " + userLocation.longitude
-                        val alt = ", alt: " + userLocation.altitude
-                        val locationString = lat.plus(long).plus(alt)
-
-
-                        sharedMainViewModel.updateUserLocation(userLocation)
-                        mMap.moveCamera(
-                            CameraUpdateFactory.newLatLngZoom(
-                                LatLng(
-                                    userLocation.latitude,
-                                    userLocation.longitude
-                                ), DEFAULT_ZOOM.toFloat()
-                            )
-                        )
-                    }
-                }
-            }
-
-        } catch (s: SecurityException) {
-            s.printStackTrace()
         }
     }
 
@@ -257,6 +275,12 @@ class MapsFragment : Fragment(), ReportDialog.ReportDialogListener {
 
     }
 
+    private fun placeGunshot() {
+        mMap.setOnMapLongClickListener { latLng ->
+            setupGunshotDialog(latLng)
+        }
+    }
+
 
     private fun placeMarker() {
         mMap.setOnMapClickListener { latLng ->
@@ -264,23 +288,38 @@ class MapsFragment : Fragment(), ReportDialog.ReportDialogListener {
         }
     }
 
-    private suspend fun fetchElevation(location: LatLng): String {
-        try {
-            val response = withContext(Dispatchers.IO) {
-                GoogleService.service.getElevation(GoogleService.toLocationString(location))
-            }
-            if (response.isSuccessful && response.body() != null) {
+    private fun setupGunshotDialog(latLng: LatLng) {
+        val gunshotDialog: GunshotDialog
+        val weapons = mutableListOf<String>()
 
-                Log.e("GoogleApiCall", response.body().toString())
-                return response.body()!!.results[0].elevation.toString()
-            } else {
-                throw Exception("Failed to fetch elevation: ${response.code()} ${response.message()}")
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                reportViewModel.guns.collect { data ->
+                    when (data) {
+                        is NetworkResult.Loading -> Toast.makeText(
+                            requireContext(),
+                            "Fetching guns...",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        is NetworkResult.Success -> {
+                            for (gun in data.data!!) {
+                                weapons.add(gun.name)
+                            }
+                        }
+                        is NetworkResult.Error ->
+                            Toast.makeText(requireContext(), data.message, Toast.LENGTH_SHORT)
+                                .show()
+                    }
+                }
             }
-        } catch (e: Exception) {
-            Log.e("GoogleApiCall", "Failed to fetch elevation", e)
-            throw e
         }
+
+        reportViewModel.fetchElevation(latLng)
+        val elevation = reportViewModel.elevation.value.toString()
+        gunshotDialog = GunshotDialog(weapons, latLng, elevation, this@MapsFragment)
+        gunshotDialog.show(parentFragmentManager, "ReportDialog")
     }
+
 
     private fun setupDialog(latLng: LatLng) {
 
@@ -321,6 +360,7 @@ class MapsFragment : Fragment(), ReportDialog.ReportDialogListener {
 
         binding.fabAddReport.isVisible = false
         binding.fabRemoveMarkers.isVisible = false
+        binding.fabRemoveGunshots.isVisible = false
 
         reportViewModel.manualReports.observe(viewLifecycleOwner) { reports ->
             if (reports.isNotEmpty()) {
@@ -334,10 +374,21 @@ class MapsFragment : Fragment(), ReportDialog.ReportDialogListener {
             }
         }
 
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch {
+                    reportViewModel.gunshots.collect {
+                        binding.fabRemoveGunshots.isVisible =
+                            it is NetworkResult.Success && it.data?.isNotEmpty() == true
+                    }
+                }
+            }
+        }
 
-
-        binding.fabAddReport.setOnClickListener {
-            reportViewModel.sendManualReports()
+        binding.fabRemoveGunshots.setOnClickListener {
+            reportViewModel.removeGunshots()
+            mMap.clear()
+            binding.fabRemoveGunshots.isVisible = false
         }
 
         binding.fabRemoveMarkers.setOnClickListener {
@@ -348,7 +399,6 @@ class MapsFragment : Fragment(), ReportDialog.ReportDialogListener {
         }
 
 
-
     }
 
     override fun onReportSelected(report: Report) {
@@ -356,7 +406,7 @@ class MapsFragment : Fragment(), ReportDialog.ReportDialogListener {
         val marker = addDraggableMarker(report)
         marker!!.showInfoWindow()
         reportViewModel.addManualReport(marker.id, report)
-        Log.e("onCreateDialog", report.toString() )
+        Log.e("onCreateDialog", report.toString())
     }
 
     private fun checkLocationProvidersEnabled(): Boolean {
@@ -373,7 +423,6 @@ class MapsFragment : Fragment(), ReportDialog.ReportDialogListener {
         val dateFormat = SimpleDateFormat("EEE, MMM d, yyyy HH:mm:ss", Locale.getDefault())
         val date = dateFormat.format(report.timestamp)
 
-        Log.e("onCreateDialog", report.toString() )
         val markerString =
             "${report.gun}, ${report.coord_lat}, ${report.coord_long}, ${report.coord_alt}"
         val markerOptions = MarkerOptions()
@@ -389,7 +438,7 @@ class MapsFragment : Fragment(), ReportDialog.ReportDialogListener {
         val dateFormat = SimpleDateFormat("EEE, MMM d, yyyy HH:mm:ss", Locale.getDefault())
         val date = dateFormat.format(gunshot.timestamp)
         val markerString =
-            "${gunshot.gun}, ${gunshot.coordAlt}, ${gunshot.coordLong}, ${gunshot.coordAlt}"
+            "${gunshot.gun}, ${gunshot.coordLong}, ${gunshot.coordLat}, ${gunshot.coordAlt}, shots fired:${gunshot.shotsFired}"
         val markerOptions = MarkerOptions()
             .position(LatLng(gunshot.coordLat.toDouble(), gunshot.coordLong.toDouble()))
             .title(markerString)
@@ -403,4 +452,42 @@ class MapsFragment : Fragment(), ReportDialog.ReportDialogListener {
             createMarker(gunshot)
         }
     }
+
+
+    private fun gunshotToHeatmapData(gunshotList: List<Gunshot>): List<LatLng> {
+        val list = mutableListOf<LatLng>()
+        for (gunshot in gunshotList) {
+            val data = LatLng(gunshot.coordLat.toDouble(), gunshot.coordLong.toDouble())
+            list.add(data)
+        }
+        return list
+    }
+
+    override fun onGunshotSelected(gunshot: GunshotNetworkModel) {
+        reportViewModel.addGunshot(gunshot)
+        Log.e("onCreateDialog", gunshot.toString())
+    }
+
+
+    private fun addHeatMap(mMap: GoogleMap, gunshotList: List<Gunshot>) {
+        val latLngs: List<LatLng?> = gunshotToHeatmapData(gunshotList)
+        Log.e("addHeatMap", latLngs.toString())
+
+        try {
+            val provider = HeatmapTileProvider.Builder()
+                .data(latLngs)
+                .build()
+
+            // Add a tile overlay to the map, using the heat map tile provider.
+            val overlay = mMap.addTileOverlay(TileOverlayOptions().tileProvider(provider))
+        } catch (e: IllegalArgumentException) {
+        }
+
+    }
+
+    private fun removeHeatMap() {
+        // tileOverlay?.remove()
+    }
+
+
 }

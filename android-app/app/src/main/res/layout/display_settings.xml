@@ -22,5 +22,12 @@
         android:checked="true"
         android:text="Display result" />
 
+    <com.google.android.material.switchmaterial.SwitchMaterial
+        android:id="@+id/widgetHeatmap"
+        android:layout_width="138dp"
+        android:layout_height="wrap_content"
+        android:checked="false"
+        android:text="Show heatmap" />
+
 
 </LinearLayout>

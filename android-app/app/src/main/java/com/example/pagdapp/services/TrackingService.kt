@@ -123,6 +123,7 @@ class TrackingService : Service() {
         notificationManager: NotificationManager,
         notification: NotificationCompat.Builder
     ) {
+        /*
         locationClient
             .getLocationUpdates(10000L)
             .catch { e -> e.printStackTrace() }
@@ -134,6 +135,11 @@ class TrackingService : Service() {
                 notificationManager.notify(NOTIFICATION_ID, updateNotification.build())
             }
             .launchIn(serviceScope)
+
+         */
+        val updateNotification =
+            notification.setContentText("Tracking your location and using the microphone")
+        notificationManager.notify(NOTIFICATION_ID, updateNotification.build())
     }
 
     private fun startAudioClassification() {
@@ -142,37 +148,39 @@ class TrackingService : Service() {
 
 
     private suspend fun sendReport() {
-        serviceScope.launch {
+        serviceScope.launch mainLaunch@{
             sharedRepository.getActiveClassifierResultFlow().collect { result ->
+                serviceScope.launch {
+                    val location = withContext(Dispatchers.IO) {
+                        locationClient.getLocation(3)
+                    } ?: return@launch
 
-                if (location == null) {
-                    return@collect
-                }
-
-                val report = Report(
-                    result.timestamp,
-                    location!!.latitude.toFloat(),
-                    location!!.longitude.toFloat(),
-                    location!!.altitude.toFloat(),
-                    gun = if (result.category != "Na") {
-                        result.category
+                    val report = Report(
+                        result.timestamp,
+                        location.latitude.toFloat(),
+                        location.longitude.toFloat(),
+                        location.altitude.toFloat(),
+                        gun = if (result.category != "Na") {
+                            result.category
+                        } else {
+                            "AR-15"
+                        }
+                    )
+                    if (sharedRepository.isSendingReports.value!!) {
+                        val result = pagdRepo.addReport(report)
+                        result.collect {
+                            Log.e("sendReport", "Code: ${it.code}, message: ${it.message}, ${it.data}")
+                        }
+                        Log.e("sendReport", "Sent a report to server:$report")
                     } else {
-                        "AR-15"
+                        Log.e("sendReport", "NOT sending:$report")
                     }
-                )
-                if (sharedRepository.isSendingReports.value!!) {
-                    val result = pagdRepo.addReport(report)
-                    result.collect {
-                        Log.e("sendReport", "Code: ${it.code}, message: ${it.message}, ${it.data}")
-                    }
-                    Log.e("sendReport", "Sent a report to server:$report")
-                } else {
-                    Log.e("sendReport", "NOT sending:$report")
                 }
             }
-
         }
     }
+
+
 
 
 

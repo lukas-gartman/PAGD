@@ -1,6 +1,6 @@
 package com.example.pagdapp.data.remote.api
 
-import com.example.pagdapp.repositories.googleRep.ElevationResponse
+import com.example.pagdapp.data.model.ElevationResponse
 import com.example.pagdapp.data.remote.retrofitServices.GoogleService
 import retrofit2.Response
 import retrofit2.http.GET

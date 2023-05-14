@@ -1,10 +1,6 @@
 package com.example.pagdapp.ui
 
-import android.Manifest
-import android.app.*
-import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.os.Build
@@ -12,27 +8,21 @@ import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
-import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.viewModels
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
-import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
 import androidx.core.util.Pair
 import androidx.core.view.GravityCompat
 import androidx.core.view.forEach
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import com.example.pagdapp.R
-import com.example.pagdapp.ui.adapters.MarkerAdapter
 import com.example.pagdapp.databinding.ActivityMainBinding
-import com.example.pagdapp.data.model.Position
-import com.example.pagdapp.data.remote.socketServices.SocketService
 import com.example.pagdapp.databinding.FragmentMapsBinding
-import com.example.pagdapp.services.GunshotService
+import com.example.pagdapp.services.LocationService
 import com.example.pagdapp.services.TrackingService
+import com.example.pagdapp.ui.adapters.MarkerAdapter
 import com.example.pagdapp.ui.fragments.MapsFragment
 import com.example.pagdapp.ui.fragments.ReportAndGunFragment
 import com.example.pagdapp.ui.fragments.SettingsFragment
@@ -40,16 +30,14 @@ import com.example.pagdapp.ui.viewModels.MainViewModel
 import com.example.pagdapp.ui.viewModels.ReportViewModel
 import com.example.pagdapp.ui.viewModels.SettingsViewModel
 import com.example.pagdapp.utils.Constants.ACTION_SHOW_MAP_FRAGMENT
-import com.example.pagdapp.utils.Constants.NOTIFICATION_PERMISSION_CODE
+import com.example.pagdapp.utils.IntentUtils
 import com.example.pagdapp.utils.PermissionHandler
 import com.google.android.material.datepicker.MaterialDatePicker
 import com.google.android.material.slider.Slider
 import com.google.android.material.switchmaterial.SwitchMaterial
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
+import com.google.firebase.messaging.FirebaseMessaging
 import dagger.hilt.android.AndroidEntryPoint
-import io.socket.client.Socket
-import io.socket.emitter.Emitter
+import java.util.*
 import javax.inject.Inject
 
 
@@ -61,8 +49,6 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var mapBinding: FragmentMapsBinding
-    private val gson: Gson = Gson()
-    private var mSocket: Socket? = null
     private val mainViewModel: MainViewModel by viewModels()
     private val settingsViewModel: SettingsViewModel by viewModels()
     private val reportViewModel: ReportViewModel by viewModels()
@@ -110,17 +96,11 @@ class MainActivity : AppCompatActivity() {
         toggle.syncState()
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
-
-
         binding.bottomNavigationView.background = null
         binding.bottomNavigationView.menu.getItem(2).isEnabled = false
 
 
-        if (savedInstanceState == null) {
-            supportFragmentManager.beginTransaction()
-                .replace(R.id.fragment_container, MapsFragment.newInstance())
-                .commitNow()
-        }
+        handleIntent(intent)
 
         //Request permissions
         permissionHandler.requestAllPermissions()
@@ -131,14 +111,56 @@ class MainActivity : AppCompatActivity() {
         onBackPressedDispatcher.addCallback(this, onBackPressedCallback)
         setupNavigationDrawerMenu()
 
+        // Start service if API is 28 or higher
+        if (Build.VERSION.SDK_INT >= 28 && settingsViewModel.isRunning.value == false) {
+            Intent(applicationContext, LocationService::class.java).apply {
+                action = LocationService.ACTION_START
+                startService(this)
 
-        // Start gunshot service
-        Intent(applicationContext, GunshotService::class.java).apply {
-            action = GunshotService.ACTION_START
-            startService(this)
-
+            }
         }
 
+
+        FirebaseMessaging.getInstance().subscribeToTopic("all");
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: Intent?) {
+        val gunshotData = intent?.let { IntentUtils.createGunShotFromIntent(it) }
+        if (intent?.action == ACTION_SHOW_MAP_FRAGMENT && gunshotData != null) {
+            val currentFragment = supportFragmentManager.findFragmentById(R.id.fragment_container)
+            mainViewModel.updateClickGunshotNotification(gunshotData)
+            if (currentFragment !is MapsFragment) {
+                supportFragmentManager.beginTransaction()
+                    .replace(R.id.fragment_container, MapsFragment.newInstance())
+                    .commitNow()
+
+
+                binding.bottomNavigationView.selectedItemId = R.id.Home
+            }
+        } else {
+            supportFragmentManager.beginTransaction()
+                .replace(R.id.fragment_container, MapsFragment.newInstance())
+                .commitNow()
+
+            binding.bottomNavigationView.selectedItemId = R.id.Home
+        }
+    }
+
+
+    private fun fragmentNavigation(fragment: Fragment) {
+        supportFragmentManager
+            .beginTransaction()
+            .replace(R.id.fragment_container, fragment)
+            .commitNow()
     }
 
 
@@ -147,8 +169,14 @@ class MainActivity : AppCompatActivity() {
 
         binding.navView.setNavigationItemSelectedListener {
             when (it.itemId) {
-                R.id.nav_item_pagd_legacy -> {
-                    settingsViewModel.setActiveClassifier("PAGD Legacy model")
+                R.id.nav_item_pagd_legacy_5 -> {
+                    settingsViewModel.setActiveClassifier("PAGD Legacy model 5")
+                }
+                R.id.nav_item_pagd_legacy_8 -> {
+                    settingsViewModel.setActiveClassifier("PAGD Legacy model 8")
+                }
+                R.id.nav_item_pagd_legacy_9 -> {
+                    settingsViewModel.setActiveClassifier("PAGD Legacy model 9")
                 }
                 R.id.nav_item_yamnet -> {
                     settingsViewModel.setActiveClassifier("Yamnet model")
@@ -173,12 +201,19 @@ class MainActivity : AppCompatActivity() {
         val switchLocation =
             displaySettingsActionView?.findViewById<SwitchMaterial>(R.id.widgetLocation)
 
+        val switchHeatmap =
+            displaySettingsActionView?.findViewById<SwitchMaterial>(R.id.widgetHeatmap)
+
         mainViewModel.showLocation.observe(this) { showLocation ->
             switchLocation?.isChecked = showLocation
         }
 
         mainViewModel.showResult.observe(this) { showResult ->
             switchResult?.isChecked = showResult
+        }
+
+        mainViewModel.showHeatmap.observe(this) { showHeatmap ->
+            switchHeatmap?.isChecked = showHeatmap
         }
 
 
@@ -194,18 +229,22 @@ class MainActivity : AppCompatActivity() {
 
         }
 
+        switchHeatmap?.setOnCheckedChangeListener { _, isChecked ->
+            mainViewModel.toggleHeatmap(isChecked)
+        }
+
         switchListening?.setOnClickListener {
             val switch = it as SwitchMaterial
 
             if (switch.isChecked) {
-                Intent(applicationContext, GunshotService::class.java).apply {
-                    action = GunshotService.ACTION_START
+                Intent(applicationContext, LocationService::class.java).apply {
+                    action = LocationService.ACTION_START
                     startService(this)
 
                 }
             } else {
-                Intent(applicationContext, GunshotService::class.java).apply {
-                    action = GunshotService.ACTION_STOP
+                Intent(applicationContext, LocationService::class.java).apply {
+                    action = LocationService.ACTION_STOP
                     startService(this)
 
                 }
@@ -281,98 +320,28 @@ class MainActivity : AppCompatActivity() {
 
         dateRangePicker.show(supportFragmentManager, "date_range_picker")
 
-        dateRangePicker.addOnPositiveButtonClickListener {
-            mainViewModel.setDateFromTo(it)
+        dateRangePicker.addOnPositiveButtonClickListener { dateRange ->
+            val startDate = dateRange.first
+            var endDate = dateRange.second
+
+            val calendar = Calendar.getInstance().apply {
+                timeInMillis = endDate
+                set(Calendar.HOUR_OF_DAY, 23)
+                set(Calendar.MINUTE, 59)
+                set(Calendar.SECOND, 59)
+                set(Calendar.MILLISECOND, 999)
+            }
+            endDate = calendar.timeInMillis
+
+            mainViewModel.setDateFromTo(Pair(startDate, endDate))
             reportViewModel.fetchSelectedGunshots()
         }
+
 
 
         dateRangePicker.addOnCancelListener {
             dateRangePicker.dismiss()
         }
-    }
-
-
-    override fun onDestroy() {
-        super.onDestroy()
-        mSocket?.disconnect()
-    }
-
-    override fun onNewIntent(intent: Intent?) {
-        super.onNewIntent(intent)
-        handleIntent(intent)
-    }
-
-    private fun handleIntent(intent: Intent?) {
-        when (intent?.action) {
-            ACTION_SHOW_MAP_FRAGMENT ->
-                supportFragmentManager.beginTransaction()
-                    .replace(R.id.fragment_container, MapsFragment.newInstance())
-                    .commitNow()
-        }
-    }
-
-
-    private fun sendThroughSocket() {
-        if (!SocketService.getSocket().connected()) {
-            Toast.makeText(this, "You must connect first", Toast.LENGTH_SHORT).show()
-        }
-        // SocketHandler.getSocket().emit("sendData", gson.toJson(markerList))
-    }
-
-    private var eventUpdate = Emitter.Listener { args ->
-
-        if (args[0] != null) {
-
-            val listType = object : TypeToken<List<Position>>() {}.type
-            val list: List<Position?> = gson.fromJson(args[0].toString(), listType)
-
-
-            runOnUiThread {
-                val channelId = createNotificationChannel("my_channel_id", "My Channel")
-                showNotification(channelId, "Alert!", "New gunshots in your area!")
-            }
-        }
-
-
-    }
-
-    private fun createNotificationChannel(channelId: String, channelName: String): String {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val notificationChannel =
-                NotificationChannel(channelId, channelName, NotificationManager.IMPORTANCE_HIGH)
-            notificationChannel.enableLights(true)
-            notificationChannel.lightColor = Color.RED
-            notificationChannel.enableVibration(true)
-            notificationChannel.description = "This is a notification channel for my app"
-            val notificationManager =
-                getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            notificationManager.createNotificationChannel(notificationChannel)
-            return channelId
-        }
-        return ""
-    }
-
-    private fun showNotification(channelId: String, title: String, message: String) {
-        val intent = Intent(this, MainActivity::class.java)
-        val pendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE)
-        val builder = NotificationCompat.Builder(this, channelId)
-            .setSmallIcon(R.drawable.baseline_add_location_alt_24)
-            .setContentTitle(title)
-            .setContentText(message)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-            .setContentIntent(pendingIntent)
-            .setAutoCancel(true)
-        val notificationManager = NotificationManagerCompat.from(this)
-        if (ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.POST_NOTIFICATIONS
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            permissionHandler.requestSinglePermission(NOTIFICATION_PERMISSION_CODE)
-            return
-        }
-        notificationManager.notify(0, builder.build())
     }
 
 
@@ -433,17 +402,6 @@ class MainActivity : AppCompatActivity() {
         }
 
 
-    }
-
-    private fun fragmentNavigation(fragment: Fragment) {
-        supportFragmentManager
-            .beginTransaction()
-            .replace(R.id.fragment_container, fragment)
-            .commitNow()
-    }
-
-    private fun initEmitListener() {
-        mSocket?.on("eventUpdate", eventUpdate)
     }
 
 

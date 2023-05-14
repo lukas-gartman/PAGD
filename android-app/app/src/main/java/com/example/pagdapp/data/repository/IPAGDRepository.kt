@@ -3,13 +3,15 @@ package com.example.pagdapp.data.repository
 import com.example.pagdapp.data.model.dbModels.Gun
 import com.example.pagdapp.data.model.dbModels.Gunshot
 import com.example.pagdapp.data.model.dbModels.Report
+import com.example.pagdapp.data.model.networkModels.GunshotNetworkModel
 import com.example.pagdapp.data.model.networkModels.ReportNetworkModel
 import com.example.pagdapp.utils.NetworkResult
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 
 interface IPAGDRepository {
 
-    suspend fun helloWorld(): Flow<NetworkResult<String>>
+    suspend fun helloWorld(scope: CoroutineScope): Flow<NetworkResult<String>>
 
     suspend fun addGunToDB(gun: Gun): Flow<NetworkResult<String>>
 
@@ -29,6 +31,20 @@ interface IPAGDRepository {
 
     suspend fun getLatestGunshot(): Flow<NetworkResult<Gunshot>>
 
+    suspend fun getGunshotContinuously(
+        scope: CoroutineScope,
+        timeFrom: Long,
+        timeTo: Long,
+        delay: Long
+    ): Flow<NetworkResult<List<Gunshot>>>
+
+    suspend fun getGunshotSimple(
+        timeFrom: Long,
+        timeTo: Long
+    ): NetworkResult<List<Gunshot>>
+
+    suspend fun addGunshot(gunshot: GunshotNetworkModel): Flow<NetworkResult<String>>
 
     val getAllGuns: Flow<NetworkResult<List<Gun>>>
+
 }

@@ -7,7 +7,7 @@ import androidx.core.app.NotificationCompat
 import com.example.pagdapp.R
 import com.example.pagdapp.data.remote.locationClient.ILocationClient
 import com.example.pagdapp.data.remote.locationClient.LocationClient
-import com.example.pagdapp.services.GunshotService
+import com.example.pagdapp.services.LocationService
 import com.example.pagdapp.ui.MainActivity
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
@@ -47,14 +47,14 @@ object ServiceModule {
     ): PendingIntent = PendingIntent.getActivity(
         app, 0,
         Intent(app, MainActivity::class.java).also {
-            it.action = GunshotService.ACTION_START
+            it.action = LocationService.ACTION_START
         },
         PendingIntent.FLAG_IMMUTABLE
     )
 
     fun provideStopGunshotServiceIntent(@ApplicationContext app: Context): PendingIntent {
-        val stopIntent = Intent(app, GunshotService::class.java).apply {
-            action = GunshotService.ACTION_STOP
+        val stopIntent = Intent(app, LocationService::class.java).apply {
+            action = LocationService.ACTION_STOP
         }
         return PendingIntent.getService(
             app,
@@ -65,8 +65,8 @@ object ServiceModule {
     }
 
     fun provideStartGunshotServiceIntent(@ApplicationContext app: Context): PendingIntent {
-        val startIntent = Intent(app, GunshotService::class.java).apply {
-            action = GunshotService.ACTION_START
+        val startIntent = Intent(app, LocationService::class.java).apply {
+            action = LocationService.ACTION_START
         }
         return PendingIntent.getService(
             app,
@@ -82,7 +82,7 @@ object ServiceModule {
     fun provideBaseNotificationBuilder(
         @ApplicationContext app: Context,
         pendingIntent: PendingIntent
-    ) = NotificationCompat.Builder(app, GunshotService.GUNSHOT_NOTIFICATION_CHANNEL_ID)
+    ) = NotificationCompat.Builder(app, LocationService.GUNSHOT_NOTIFICATION_CHANNEL_ID)
         .setAutoCancel(false)
         .setOngoing(true)
         .setSmallIcon(R.drawable.pagd_icon)

@@ -26,10 +26,18 @@ object RepositoryModule {
     @Singleton
     fun provideSharedRepository(
         @ApplicationContext context: Context,
-        @Named("PAGDClassifier") audioClassifierPAGD: IAudioClassifier,
+        @Named("PAGDClassifierModel5") audioClassifierPAGD_5: IAudioClassifier,
+        @Named("PAGDClassifierModel8") audioClassifierPAGD_8: IAudioClassifier,
+        @Named("PAGDClassifierModel9") audioClassifierPAGD_9: IAudioClassifier,
         @Named("YamnetClassifier") audioClassifierYamnet: IAudioClassifier
     ): SharedRepository {
-        return SharedRepository(context, audioClassifierPAGD, audioClassifierYamnet)
+        return SharedRepository(
+            context,
+            audioClassifierPAGD_5,
+            audioClassifierPAGD_8,
+            audioClassifierPAGD_9,
+            audioClassifierYamnet
+        )
     }
 
     @Provides

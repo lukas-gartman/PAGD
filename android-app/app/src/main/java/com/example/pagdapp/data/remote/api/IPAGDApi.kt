@@ -5,6 +5,7 @@ import com.example.pagdapp.data.model.dbModels.Gunshot
 import com.example.pagdapp.data.model.dbModels.JwtToken
 import com.example.pagdapp.data.model.dbModels.Report
 import com.example.pagdapp.data.model.networkModels.GunNetworkModel
+import com.example.pagdapp.data.model.networkModels.GunshotNetworkModel
 import com.example.pagdapp.data.model.networkModels.ReportNetworkModel
 import org.json.JSONObject
 import retrofit2.Response
@@ -48,8 +49,8 @@ interface IPAGDApi {
     @POST("/api/gunshots")
     suspend fun addGunShot(
         @Header("Authorization") token: String,
-        @Body record: Gunshot
-    ): Response<Void>
+        @Body gunshot: GunshotNetworkModel
+    ): Response<GunshotNetworkModel>
 
     @GET("/api/gunshots")
     suspend fun getGunshot(

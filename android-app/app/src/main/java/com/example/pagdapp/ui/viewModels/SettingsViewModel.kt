@@ -23,6 +23,8 @@ class SettingsViewModel @Inject constructor(
     private val _delay = MutableLiveData(500L)
     val delay : LiveData<Long> = _delay
 
+    val listeningDelay : LiveData<Long>? = sharedRepository.activeClassifier.value?.getDelay()
+
     val intervalDelay: LiveData<Long> get() = sharedRepository.intervalDelay
 
     private val _threshold = MutableLiveData(0.5F)
@@ -58,11 +60,13 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun updateDelay() {
+        Log.e("setDelay", "setDelay2 ${delay.value}")
         delay.value?.let { sharedRepository.activeClassifier.value!!.setDelay(it) }
     }
 
 
     fun setDelay(threesHold: Long) {
+        Log.e("setDelay", "setDelay1 $threesHold")
         _delay.postValue(threesHold)
     }
 

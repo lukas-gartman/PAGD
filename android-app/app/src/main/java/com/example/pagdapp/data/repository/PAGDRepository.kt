@@ -4,12 +4,14 @@ import com.example.pagdapp.data.model.dbModels.Gun
 import com.example.pagdapp.data.model.dbModels.Gunshot
 import com.example.pagdapp.data.model.dbModels.Report
 import com.example.pagdapp.data.model.networkModels.GunNetworkModel
+import com.example.pagdapp.data.model.networkModels.GunshotNetworkModel
 import com.example.pagdapp.data.model.networkModels.ReportNetworkModel
 import com.example.pagdapp.data.remote.TokenProvider
 import com.example.pagdapp.data.remote.api.IPAGDApi
 import com.example.pagdapp.utils.Constants
 import com.example.pagdapp.utils.NetworkCallHelper
 import com.example.pagdapp.utils.NetworkResult
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import javax.inject.Inject
@@ -24,11 +26,12 @@ class PAGDRepository @Inject constructor(
         tokenProvider.isTokenValid()
     }
 
-    override suspend fun helloWorld(): Flow<NetworkResult<String>> {
+    override suspend fun helloWorld(scope: CoroutineScope): Flow<NetworkResult<String>> {
         return NetworkCallHelper
             .apiCallContinuous(
+                scope = scope,
                 { pagdApi.helloWorld() },
-                Constants.CONTINUOUS_NETWORK_CALL_MIDDLE
+                delayMillis = Constants.CONTINUOUS_NETWORK_CALL_MIDDLE
             ).flowOn(Dispatchers.IO)
     }
 
@@ -118,6 +121,49 @@ class PAGDRepository @Inject constructor(
     override suspend fun getLatestGunshot(): Flow<NetworkResult<Gunshot>> = flow {
         val result =
             NetworkCallHelper.simpleApiCall { pagdApi.getLatestGunshot(tokenProvider.getValidToken()) }
+        emit(result)
+    }.flowOn(Dispatchers.IO)
+
+    override suspend fun getGunshotContinuously(
+        scope: CoroutineScope,
+        timeFrom: Long,
+        timeTo: Long,
+        delay: Long
+    ): Flow<NetworkResult<List<Gunshot>>> {
+        return NetworkCallHelper.apiCallContinuous(
+            scope = scope,
+            apiCall = {
+                pagdApi.getGunshot(
+                    tokenProvider.getValidToken(),
+                    null,
+                    timeFrom,
+                    timeTo
+                )
+            },
+            callBackError = { tokenProvider.getToken() },
+            delayMillis = delay
+        ).flowOn(Dispatchers.IO)
+    }
+
+    override suspend fun getGunshotSimple(
+        timeFrom: Long,
+        timeTo: Long
+    ): NetworkResult<List<Gunshot>> {
+        val result = NetworkCallHelper.simpleApiCall {
+            pagdApi.getGunshot(
+                tokenProvider.getValidToken(),
+                null,
+                timeFrom,
+                timeTo
+            )
+        }
+        return result
+    }
+
+    override suspend fun addGunshot(gunshot: GunshotNetworkModel) = flow {
+        val result = NetworkCallHelper.simpleApiCallToString {
+            pagdApi.addGunShot(tokenProvider.getValidToken(), gunshot)
+        }
         emit(result)
     }.flowOn(Dispatchers.IO)
 

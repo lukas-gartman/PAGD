@@ -7,5 +7,8 @@ interface ILocationClient {
 
     fun getLocationUpdates (interval: Long): Flow<Location>
 
+    suspend fun getLocation(retries: Int): Location?
+    suspend fun getLocation(): Location?
+
     class LocationException(message: String): Exception()
 }

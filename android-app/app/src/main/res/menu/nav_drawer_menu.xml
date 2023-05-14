@@ -11,8 +11,14 @@
 
                 android:checkableBehavior="single">
                 <item
-                    android:id="@+id/nav_item_pagd_legacy"
-                    android:title="PAGD Legacy model" />
+                    android:id="@+id/nav_item_pagd_legacy_5"
+                    android:title="PAGD Legacy model 5" />
+                <item
+                    android:id="@+id/nav_item_pagd_legacy_8"
+                    android:title="PAGD Legacy model 8" />
+                <item
+                    android:id="@+id/nav_item_pagd_legacy_9"
+                    android:title="PAGD Legacy model 9" />
                 <item
                     android:id="@+id/nav_item_yamnet"
                     android:title="Yamnet model" />

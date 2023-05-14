@@ -8,11 +8,13 @@ import androidx.lifecycle.viewModelScope
 import com.example.pagdapp.data.model.dbModels.Gun
 import com.example.pagdapp.data.model.dbModels.Gunshot
 import com.example.pagdapp.data.model.dbModels.Report
+import com.example.pagdapp.data.model.networkModels.GunshotNetworkModel
 import com.example.pagdapp.data.model.networkModels.ReportNetworkModel
 import com.example.pagdapp.data.repository.IGoogleRepository
 import com.example.pagdapp.data.repository.IPAGDRepository
 import com.example.pagdapp.data.repository.SharedRepository
 import com.example.pagdapp.utils.Constants.GET_ELEVATION_ERROR
+import com.example.pagdapp.utils.GunshotGenerator
 import com.example.pagdapp.utils.NetworkResult
 import com.google.android.gms.maps.model.LatLng
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -46,8 +48,8 @@ class ReportViewModel @Inject constructor(
     private val _manualReports = MutableLiveData<HashMap<String, Report>>(hashMapOf())
     val manualReports: LiveData<HashMap<String, Report>> = _manualReports
 
-    private val _errorFlow = MutableStateFlow<String?>(null)
-    val errorFlow: StateFlow<String?> = _errorFlow
+    private val _errorFlow = MutableSharedFlow<String>()
+    val errorFlow: SharedFlow<String> = _errorFlow
 
     private val _successFlow = MutableStateFlow<String?>(null)
     val successFlow: StateFlow<String?> = _successFlow
@@ -151,9 +153,19 @@ class ReportViewModel @Inject constructor(
 
 
     private suspend fun gunshots(gunshotId: Int?, timeFrom: Long, timeTo: Long) {
+
         pagdRepo.getGunshot(gunshotId, timeFrom, timeTo).collect { gunshots ->
             _gunshots.value = gunshots
         }
+
+
+        /*
+        _gunshots.value = NetworkResult.Success(
+            200,
+            GunshotGenerator.generateGunshotSamples(10, 57.70849F, 11.97423F)
+        )
+
+         */
     }
 
     fun fetchSelectedGunshots() {
@@ -169,9 +181,10 @@ class ReportViewModel @Inject constructor(
             val fetchedElevation = googleRepo.getElevation(latLng).toFloat()
             _elevation.value = fetchedElevation
         } catch (e: IOException) {
-            _errorFlow.value = GET_ELEVATION_ERROR
+            _errorFlow.emit(e.message!!)
         }
     }
+
 
     fun sendManualReports() {
 
@@ -197,6 +210,20 @@ class ReportViewModel @Inject constructor(
 
     fun updateSorting(boolean: Boolean) {
         _sortAscending.postValue(boolean)
+    }
+
+    fun addGunshot(gunshot: GunshotNetworkModel) {
+        viewModelScope.launch {
+            pagdRepo.addGunshot(gunshot)
+                .catch { e -> e.printStackTrace() }
+                .collect{ result ->
+                _apiRequest.value = result
+            }
+        }
+    }
+
+    fun removeGunshots() {
+        _gunshots.value = NetworkResult.Success(200,emptyList())
     }
 
 }

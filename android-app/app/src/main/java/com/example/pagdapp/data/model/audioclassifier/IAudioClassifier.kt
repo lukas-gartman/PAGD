@@ -12,6 +12,7 @@ interface IAudioClassifier {
     fun excludeAllCategories()
     fun setThreshold(threshold: Float)
     fun setDelay(delay: Long)
+    fun getDelay(): LiveData<Long>
     fun getResult(): LiveData<String>
     fun getAudioClassificationResult(): LiveData<AudioClassificationResult>
     fun getCategories(): List<Category>
