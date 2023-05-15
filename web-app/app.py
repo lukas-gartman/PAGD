@@ -6,9 +6,7 @@ import base64
 import os
 from collections.abc import Mapping
 import jwt
-from queue import Queue
 from threading import Thread, Lock, Event
-from collections import defaultdict
 
 from pagdDB_interface import PagdDBInterface
 from subject_interface import SubjectInterface
@@ -16,6 +14,7 @@ from subject_interface import SubjectInterface
 SECRET_KEY = base64.b64decode(os.environ["JWT_SECRET_KEY"].encode("utf-8")) # decode the secret key stored in environment
 
 # Settings
+TOKEN_VALIDITY = 30*24*60*60*1000 # 30 days in milliseconds
 BULK_PROCESSING_TIMEOUT = 1
 CONCURRENT_REQUEST_DIFF = 0.2
 
@@ -39,7 +38,7 @@ def create_routes(app, db: PagdDBInterface, gunshot_subject: SubjectInterface):
             with self.lock:
                 db_result = db.add_reports(self.report_queue)
                 # Create a dictionary of reports for each client
-                if db_result is list:
+                if isinstance(db_result, list):
                     for r in db_result:
                         client_id = r.get("client_id")
                         self.results[client_id] = r
@@ -95,14 +94,17 @@ def create_routes(app, db: PagdDBInterface, gunshot_subject: SubjectInterface):
             decoded_token = jwt.decode(token, SECRET_KEY, "HS256")
             g.client_id = decoded_token.get("id") # store the client ID in the Flask g object
             g.expiration_date = decoded_token.get("exp") # store the expiration date in the Flask g object
+
+            curr_time = round(time.time() * 1000) # current UNIX timestmap in milliseconds
+            if g.expiration_date < curr_time: # The current time is beyond time of expiration
+                abort(401, description=f"Token expired")
         except (jwt.DecodeError, KeyError) as ex:
-            print("Invalid token:", str(ex))
             abort(401, description=f"Invalid token: {str(ex)}")
 
     @app.route("/")
-    def hello_world():
+    def welcome():
         return {
-            "message": "Hello, World!"
+            "message": "Welcome to PAGD!"
         }
 
     @app.route("/register")
@@ -115,7 +117,7 @@ def create_routes(app, db: PagdDBInterface, gunshot_subject: SubjectInterface):
         payload = {
             "registration": curr_time,
             "id": str(uuid.uuid4()), # generate a client ID
-            "exp": curr_time + 30*24*60*60*1000 # current time + 30 days in milliseconds
+            "exp": curr_time + TOKEN_VALIDITY # calculate the expiration date in UNIX timestamp in milliseconds
         }
         jwt_token = jwt.encode(payload, SECRET_KEY, "HS256") # create the JWT token
 

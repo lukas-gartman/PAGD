@@ -15,7 +15,7 @@ This API allows you to access various resources through a RESTful interface. It 
 To install the required packages, run the following commands:
 ```bash
 sudo apt-get install libmysqlclient-dev
-pip install flask PyJwt mysql-connector-python geopy scipy
+pip install flask PyJwt mysql-connector-python geopy scipy firebase_admin
 ```
 
 ## Configuration

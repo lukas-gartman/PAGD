@@ -48,7 +48,8 @@ class PagdDB(Database, PagdDBInterface):
         @param client_id (string): the client's unique ID
         @return (json): a JSON object with the newly added report
         """
-        query = "INSERT INTO Reports (timestamp, coord, altitude, gun, client_id) VALUES (%s, POINT(%s, %s), %s, %s, %s) RETURNING *;"
+        query = """INSERT INTO Reports (timestamp, coord, altitude, gun, client_id) VALUES (%s, POINT(%s, %s), %s, %s, %s)
+                RETURNING report_id, timestamp, X(coord) AS coord_lat, Y(coord) AS coord_long, altitude AS coord_alt, gun, client_id;"""
         # try:
         result = self.execute(query, (timestamp, coord_lat, coord_long, coord_alt, gun, client_id))
         # except Exception as e:
@@ -56,12 +57,17 @@ class PagdDB(Database, PagdDBInterface):
         return self.to_json(*result, default=str)
     
     def add_reports(self, values):
-        query = "INSERT INTO Reports (timestamp, coord, altitude, gun, client_id) VALUES (%s, POINT(%s, %s), %s, %s, %s) RETURNING *;"
-        try:
-            result = self.execute(query, values)
-        except Exception as e:
-            return None
-        return self.to_json(*result, default=str)
+        query = """INSERT INTO Reports (timestamp, coord, altitude, gun, client_id) VALUES (%s, POINT(%s, %s), %s, %s, %s)
+                RETURNING report_id;"""
+        # try:
+        r = self.execute(query, values)[0]
+        result = [(t1[0],) + t2 for t1, t2 in zip(r, values)]
+        # print(result)
+        # except Exception as e:
+        #     return None
+
+        column_names = ["report_id", "timestamp", "coord_lat", "coord_long", "coord_alt", "gun", "client_id"]
+        return self.to_json(result, column_names, default=str)
 
     def get_report(self, report_id):
         """Search for a report
