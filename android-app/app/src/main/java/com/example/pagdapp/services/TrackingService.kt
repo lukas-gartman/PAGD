@@ -11,6 +11,7 @@ import android.location.Location
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
+import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import com.example.pagdapp.R
@@ -27,6 +28,8 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import org.tensorflow.lite.task.gms.vision.TfLiteVision
+import java.text.SimpleDateFormat
+import java.util.*
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -53,9 +56,6 @@ class TrackingService : Service() {
             .setEnableGpuDelegateSupport(true)
             .build()
         TfLiteVision.initialize(this, options)
-
-
-
         super.onCreate()
     }
 
@@ -72,7 +72,6 @@ class TrackingService : Service() {
                 }
             }
         }
-        //return super.onStartCommand(intent, flags, startId)
         return START_STICKY
     }
 
@@ -104,15 +103,10 @@ class TrackingService : Service() {
                 as NotificationManager
 
         createNotificationChannelIfNeeded(notificationManager)
-
         val notification = buildNotification()
-
         startLocationUpdates(notificationManager, notification)
-
         startAudioClassification()
-
         startForeground(NOTIFICATION_ID, notification.build())
-
         serviceScope.launch {
             sendReport()
         }
@@ -123,20 +117,6 @@ class TrackingService : Service() {
         notificationManager: NotificationManager,
         notification: NotificationCompat.Builder
     ) {
-        /*
-        locationClient
-            .getLocationUpdates(10000L)
-            .catch { e -> e.printStackTrace() }
-            .onEach {
-
-                location = it
-                val updateNotification =
-                    notification.setContentText("Tracking your location and using the microphone")
-                notificationManager.notify(NOTIFICATION_ID, updateNotification.build())
-            }
-            .launchIn(serviceScope)
-
-         */
         val updateNotification =
             notification.setContentText("Tracking your location and using the microphone")
         notificationManager.notify(NOTIFICATION_ID, updateNotification.build())
@@ -167,9 +147,18 @@ class TrackingService : Service() {
                         }
                     )
                     if (sharedRepository.isSendingReports.value!!) {
-                        val result = pagdRepo.addReport(report)
-                        result.collect {
-                            Log.e("sendReport", "Code: ${it.code}, message: ${it.message}, ${it.data}")
+                        val apiResult = pagdRepo.addReport(report)
+                        // Create a notification that a report has been sent
+                        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                        createNotificationChannelIfNeeded(notificationManager)
+                        val reportNotification = buildReportNotification(result.score, result.timestamp)
+                        notificationManager.notify(NEW_NOTIFICATION_ID, reportNotification.build())
+
+                        apiResult.collect {
+                            Log.e(
+                                "sendReport",
+                                "Code: ${it.code}, message: ${it.message}, ${it.data}"
+                            )
                         }
                         Log.e("sendReport", "Sent a report to server:$report")
                     } else {
@@ -179,10 +168,6 @@ class TrackingService : Service() {
             }
         }
     }
-
-
-
-
 
     private fun getStopServicePendingIntent(): PendingIntent {
         val stopIntent = Intent(this, TrackingService::class.java).apply {
@@ -209,7 +194,7 @@ class TrackingService : Service() {
     }
 
     /**
-        NOTIFICATION OPTIONS
+    NOTIFICATION OPTIONS
      */
 
     private fun getMainActivityPendingIntent() = PendingIntent.getActivity(
@@ -222,6 +207,37 @@ class TrackingService : Service() {
     )
 
 
+    private fun createNotificationChannelIfNeeded(notificationManager: NotificationManager) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            createNotificationChannel(
+                notificationManager,
+                NOTIFICATION_CHANNEL_ID,
+                NOTIFICATION_CHANNEL_NAME
+            )
+            createNotificationChannel(
+                notificationManager,
+                NEW_NOTIFICATION_CHANNEL_ID,
+                NEW_NOTIFICATION_CHANNEL_NAME
+            )
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun createNotificationChannel(
+        notificationManager: NotificationManager,
+        channelId: String,
+        channelName: String
+    ) {
+        val channel = NotificationChannel(
+            channelId,
+            channelName,
+            NotificationManager.IMPORTANCE_LOW
+        )
+
+        notificationManager.createNotificationChannel(channel)
+    }
+
+/*
     private fun createNotificationChannelIfNeeded(notificationManager: NotificationManager) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             createNotificationChannel(notificationManager)
@@ -239,6 +255,7 @@ class TrackingService : Service() {
         notificationManager.createNotificationChannel(channel)
     }
 
+ */
 
 
     private fun buildNotification(): NotificationCompat.Builder {
@@ -268,11 +285,29 @@ class TrackingService : Service() {
             .setContentIntent(getMainActivityPendingIntent())
     }
 
+    private fun buildReportNotification(score: Float, timestamp: Long): NotificationCompat.Builder {
+        val date = Date(timestamp)
+        val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+        val dateString = dateFormat.format(date)
+
+        return NotificationCompat.Builder(this, NEW_NOTIFICATION_CHANNEL_ID)
+            .setAutoCancel(true) // This notification should be auto-cancelled when clicked
+            .setOngoing(false) // This notification is not ongoing
+            .setContentTitle("PAGD App")
+            .setContentText("Report sent: score $score, time: $dateString ")
+            .setSmallIcon(R.drawable.pagd_icon_green_final)
+    }
+
     companion object {
         const val ACTION_START = "ACTION_START"
         const val ACTION_STOP = "ACTION_STOP"
         const val NOTIFICATION_CHANNEL_ID = "tracking_channel"
         const val NOTIFICATION_CHANNEL_NAME = "Tracking"
         const val NOTIFICATION_ID = 1
+
+
+        const val NEW_NOTIFICATION_CHANNEL_ID = "new_notification_channel"
+        const val NEW_NOTIFICATION_CHANNEL_NAME = "New Notification"
+        const val NEW_NOTIFICATION_ID = 10
     }
 }
