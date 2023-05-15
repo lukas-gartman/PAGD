@@ -33,7 +33,7 @@ def create_routes(app, db: PagdDBInterface, gunshot_subject: SubjectInterface):
             self.event = Event()
             self.last_request_time = 0
         
-        def bulk_process_requests(self):
+        def _bulk_process_requests(self):
             time.sleep(BULK_PROCESSING_TIMEOUT)
             with self.lock:
                 db_result = db.add_reports(self.report_queue)
@@ -57,7 +57,7 @@ def create_routes(app, db: PagdDBInterface, gunshot_subject: SubjectInterface):
                 with self.lock:
                     if not self.report_queue: # Start collecting reports
                         self.report_queue.append((timestamp, coord_lat, coord_long, coord_alt, gun, client_id))
-                        Thread(target=self.bulk_process_requests).start()
+                        Thread(target=self._bulk_process_requests).start()
                     else: # Keep filling the queue
                         self.report_queue.append((timestamp, coord_lat, coord_long, coord_alt, gun, client_id))
                 # Wait for the bulk insert to finish
@@ -65,7 +65,8 @@ def create_routes(app, db: PagdDBInterface, gunshot_subject: SubjectInterface):
                 with self.lock:
                     try:
                         result = self.results.pop(client_id)
-                    except KeyError: # Unable to find the report. Error in receiving or processing?
+                    except KeyError as e: # Unable to find the report. Error in receiving or processing?
+                        print(f"ERROR: Unable to find the report.\n\t{str(e)}")
                         return None
             else: # Process individually
                 result = db.add_report(timestamp, coord_lat, coord_long, coord_alt, gun, client_id)
