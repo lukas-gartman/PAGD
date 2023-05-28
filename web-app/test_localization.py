@@ -5,7 +5,7 @@ url = "https://lukas.tottes.net"
     
 class Test:
     def __init__(self, start_timestamp, max_timestamp_error = 100, max_position_error = 15, client_amount = (4,8),
-                 client_distance = (50,500), client_heard = 0.9, local = False):
+                 client_distance = (50,500), client_heard = 0.9, local = False, got = False):
         self.start_timestamp = start_timestamp
         self.gunshots_fired = 0
         self.max_timestamp_error = max_timestamp_error
@@ -14,8 +14,10 @@ class Test:
         self.client_distance = client_distance
         self.client_heard = client_heard
         self.local = local
-
-        self.gunshot_lat, self.gunshot_long = random.uniform(54, 69), random.uniform(10, 26)
+        if got:
+            self.gunshot_lat, self.gunshot_long = random.uniform(57.624, 57.775), random.uniform(11.89, 12.165)
+        else:
+            self.gunshot_lat, self.gunshot_long = random.uniform(54, 69), random.uniform(10, 26)
         self.gunshot_pos = Position(self.gunshot_lat, self.gunshot_long, 0)
 
         self.clients = [Client(self) for _ in range(random.randint(*self.client_amount))]
@@ -126,21 +128,24 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
                     prog = 'test_localization',
                     description = 'Simulates gunshots and clients to determine localization accuracy')
-    parser.add_argument('-o', '--output', default='results.csv', help="output path for errors")
+    parser.add_argument('-o', '--output', default=None, help="output path for errors")
     parser.add_argument('-s', '--simulations', default=10000, type=int, help="amount of simulations to run")
     parser.add_argument('-t', '--timestamp', default=100, type=int, help="max timestamp error")
     parser.add_argument('-c', '--clients', default=8, type=int, help="amount of clients in simulation")
-    parser.add_argument('-l', '--local', action='store_true', help="if simulations should be run locally or on server")
+    parser.add_argument('-l', '--local', action='store_true', help="set this if simulations should be run locally instead of on the server")
+    parser.add_argument('-g', '--got', action='store_true', help="set this if simulations only occur inside gothenburg")
+    
     args = parser.parse_args()
 
-
-    file = open(args.output, "a")
+    if args.output:
+        file = open(args.output, "a")
     for i in range(args.simulations):
-        test = Test(int(time.time() * 1000), local=args.local, max_timestamp_error = args.timestamp, client_amount=(args.clients,args.clients))
+        test = Test(int(time.time() * 1000), local=args.local, max_timestamp_error = args.timestamp, client_amount=(args.clients,args.clients), got = args.got)
         test.run(random.randint(1,8))
         error = test.collect_results()
         
-        if error is not None:
+        if error is not None and args.output is not None:
             file.write(str(error).replace('.', ',') + "\n")
         print(i + 1)
-    file.close()
+    if args.output:
+        file.close()
