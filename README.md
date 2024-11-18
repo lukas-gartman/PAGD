@@ -1,92 +1,40 @@
-# ![PAGD](PAGD-icon-green.png){: width="10%"}  Privacy Aware Gunshot Detectors - DATX11-23-31 
+# Privacy-Aware Gunshot Detection
 
+![pagd_icon_overleaf](https://github.com/user-attachments/assets/2803db0d-8548-43c2-bfa6-3921f6b639aa)
 
+### Smartphone-based Solution to Distributed Gunshot Detection and Localization using Deep Learning
 
-## Getting started
+A Bachelor's thesis by *Martin Engström, Lukas Gartman, Salam Hani, Sven Kellgren, Anas Masri*, and *Tobias Olsson*.
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+**Chalmers University** and **University of Gothenburg** at the **Computer Science and Engineering Department (CSE)**.
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+### Introduction
+This Bachelor thesis explored the feasibility of developing a smartphone-based gunshot detection system that prioritises user privacy. The system leverages deep learning techniques to accurately identify gunshot audio events in real-time. By utilising GPS technology, the system can potentially pinpoint the location of the incident and alert relevant authorities. For the full report, please refer to [PAGD_Report.pdf](https://github.com/lukas-gartman/PAGD/blob/main/PAGD_Report.pdf).
 
-## Add your files
+### Technical Approach
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
+The thesis delves into the technical aspects of such a system, including:
 
-```
-cd existing_repo
-git remote add origin https://git.chalmers.se/tobiasol/datx11-23-31.git
-git branch -M main
-git push -uf origin main
-```
+1. **Audio Feature Extraction**:
+    Exploring techniques to extract relevant audio features from smartphone microphone input.
+2. **Deep Learning Model**:
+    Investigating the suitability of deep neural networks for gunshot sound classification.
+3. **Real-time Inference**:
+    Discussing the challenges and potential solutions for real-time processing on mobile devices.
+4. **GPS Integration**:
+    Considering the privacy implications and technical considerations of GPS usage.
+5. **Privacy-Preserving Data Transmission**:
+    Proposing strategies to minimise data exposure and ensure user privacy.
 
-## Integrate with your tools
+### Challenges and Future Directions
 
-- [ ] [Set up project integrations](https://git.chalmers.se/tobiasol/datx11-23-31/-/settings/integrations)
+The thesis highlights the significant challenges associated with developing a robust and privacy-preserving gunshot detection system, including:
 
-## Collaborate with your team
+* **Acoustic Variability**:
+    The need to address variations in acoustic environments.
+* **Computational Constraints**:
+    The limitations of mobile devices in terms of processing power and battery life.
+* **Privacy Concerns**:
+Balancing the need for accurate detection with user privacy.
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Automatically merge when pipeline succeeds](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
-
-## Test and Deploy
-
-Use the built-in continuous integration in GitLab.
-
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing(SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
-
-***
-
-# Editing this README
-
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thank you to [makeareadme.com](https://www.makeareadme.com/) for this template.
-
-## Suggestions for a good README
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
-
-## Name
-Choose a self-explaining name for your project.
-
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
-
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
-
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
-
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
-
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
-
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
-
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
-
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+Future research and development efforts could focus on addressing these challenges and further enhancing the system's capabilities.
